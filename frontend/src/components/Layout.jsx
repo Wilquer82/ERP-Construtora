@@ -11,6 +11,7 @@ const menu = [
   { to: '/materiais', icone: 'materiais', texto: 'Materiais / Estoque' },
   { to: '/fornecedores', icone: 'clientes', texto: 'Fornecedores' },
   { to: '/compras', icone: 'orcamento', texto: 'Compras / Pedidos' },
+  { to: '/usuarios', icone: 'clientes', texto: 'Usuários e permissões' },
 ];
 
 function Icone({ nome }) {
@@ -36,6 +37,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const iniciais = (user?.nome || 'CE').split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
+  const menuVisivel = menu.filter((m) => m.to !== '/usuarios' || user?.role === 'admin');
 
   const sair = () => { logout(); navigate('/login'); };
 
@@ -50,7 +52,7 @@ export default function Layout() {
           </div>
         </div>
         <nav aria-label="Navegação principal">
-          {menu.map((m) => (
+          {menuVisivel.map((m) => (
             <NavLink key={m.to} to={m.to} end={m.fim} title={m.texto} className={({ isActive }) => `item-menu${isActive ? ' ativo' : ''}`}>
               <span className="menu-icono"><Icone nome={m.icone} /></span>
               <span className="txt">{m.texto}</span>

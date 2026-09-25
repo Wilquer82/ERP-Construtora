@@ -11,11 +11,19 @@ import Financeiro from './pages/Financeiro.jsx';
 import Materiais from './pages/Materiais.jsx';
 import Fornecedores from './pages/Fornecedores.jsx';
 import Compras from './pages/Compras.jsx';
+import Usuarios from './pages/Usuarios.jsx';
 
 function RotaProtegida({ children }) {
   const { user, carregandoSessao } = useAuth();
   if (carregandoSessao) return <div className="vazio">Validando sessao...</div>;
   return user ? children : <Navigate to="/login" replace />;
+}
+
+function RotaAdmin({ children }) {
+  const { user, carregandoSessao } = useAuth();
+  if (carregandoSessao) return <div className="vazio">Validando sessao...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return user.role === 'admin' ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {
@@ -32,6 +40,7 @@ export default function App() {
         <Route path="materiais" element={<Materiais />} />
         <Route path="fornecedores" element={<Fornecedores />} />
         <Route path="compras" element={<Compras />} />
+        <Route path="usuarios" element={<RotaAdmin><Usuarios /></RotaAdmin>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

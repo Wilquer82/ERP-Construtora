@@ -14,7 +14,6 @@ const obraSchema = new mongoose.Schema({
     default: 'planejamento'
   },
   valorOrcamento: { type: Number, default: 0, min: 0 },
-  percentualConclusao: { type: Number, default: 0, min: 0, max: 100 },
   dataInicio: Date,
   dataPrevisaoFim: Date,
   dataConclusao: Date,

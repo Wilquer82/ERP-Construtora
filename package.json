@@ -9,5 +9,9 @@
     "dev:frontend": "cd frontend && npm run dev",
     "seed": "cd backend && npm run seed",
     "build": "cd frontend && npm run build"
+  },
+  "dependencies": {
+    "@types/recharts": "^1.8.29",
+    "recharts": "^3.10.1"
   }
 }

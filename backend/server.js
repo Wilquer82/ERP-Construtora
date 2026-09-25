@@ -13,6 +13,7 @@ import contratoRoutes from './routes/contratos.js';
 import financeiroRoutes from './routes/financeiro.js';
 import materialRoutes from './routes/materiais.js';
 import dashboardRoutes from './routes/dashboard.js';
+import medicaoRoutes from './routes/medicoes.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use('/auth', authLimiter, authRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/obras', obraRoutes);
+app.use('/api/medicoes', medicaoRoutes);
 app.use('/api/orcamentos', orcamentoRoutes);
 app.use('/api/contratos', contratoRoutes);
 app.use('/api/financeiro', financeiroRoutes);

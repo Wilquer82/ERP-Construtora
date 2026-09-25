@@ -53,4 +53,14 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+// POST /api/auth/logout
+router.post('/logout', protect, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { $inc: { tokenVersion: 1 } });
+    res.json({ message: 'Sessao encerrada' });
+  } catch (err) {
+    res.status(500).json({ error: 'Nao foi possivel encerrar a sessao' });
+  }
+});
+
 export default router;

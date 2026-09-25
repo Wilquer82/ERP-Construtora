@@ -5,6 +5,7 @@ const itemOrcamentoSchema = new mongoose.Schema({
   unidade: { type: String, default: 'und' },
   quantidade: { type: Number, default: 1, min: 0.0001 },
   custoUnitario: { type: Number, default: 0, min: 0 },
+  materialVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Material', default: null },
   // total = quantidade * custoUnitario (calculado no frontend/backend)
 }, { _id: true });
 
@@ -15,7 +16,7 @@ const orcamentoSchema = new mongoose.Schema({
   itens: [itemOrcamentoSchema],
   desconto: { type: Number, default: 0, min: 0 },
   acrescimo: { type: Number, default: 0, min: 0 },
-  status: { type: String, enum: ['rascunho', 'aprovado', 'rejeitado'], default: 'rascunho' },
+  status: { type: String, enum: ['rascunho', 'aprovado', 'rejeitado', 'cancelado'], default: 'rascunho' },
   dataCriacao: { type: Date, default: Date.now },
   validadeDias: { type: Number, default: 30, min: 1 }
 }, { timestamps: true });

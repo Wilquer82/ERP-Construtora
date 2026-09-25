@@ -9,6 +9,8 @@ import Orcamentos from './pages/Orcamentos.jsx';
 import Contratos from './pages/Contratos.jsx';
 import Financeiro from './pages/Financeiro.jsx';
 import Materiais from './pages/Materiais.jsx';
+import Fornecedores from './pages/Fornecedores.jsx';
+import Compras from './pages/Compras.jsx';
 
 function RotaProtegida({ children }) {
   const { user, carregandoSessao } = useAuth();
@@ -28,6 +30,8 @@ export default function App() {
         <Route path="contratos" element={<Contratos />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="materiais" element={<Materiais />} />
+        <Route path="fornecedores" element={<Fornecedores />} />
+        <Route path="compras" element={<Compras />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

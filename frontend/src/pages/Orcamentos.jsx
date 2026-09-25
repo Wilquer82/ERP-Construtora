@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
+import { exportarOrcamentoPdf } from '../utils/exporters.js';
 
 const itemVazio = { descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0, materialVinculado: '' };
 const vazio = { obra: '', cliente: '', descricao: '', itens: [{ ...itemVazio }], desconto: 0, acrescimo: 0, status: 'rascunho', validadeDias: 30 };
@@ -83,6 +84,7 @@ export default function Orcamentos() {
                   <td>{fmtData(o.createdAt)}</td>
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(o)}>Editar</button>{' '}
+                    <button className="btn btn-linha btn-mini" onClick={() => exportarOrcamentoPdf(o)}>PDF</button>{' '}
                     {o.status === 'aprovado' && (
                       <button className="btn btn-linha btn-mini" onClick={() => gerarContrato(o._id)}>Gerar contrato</button>
                     )}{' '}

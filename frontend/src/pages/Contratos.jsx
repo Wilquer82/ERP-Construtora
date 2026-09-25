@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
+import { exportarContratoPdf } from '../utils/exporters.js';
 
 const vazio = { numero: '', obra: '', cliente: '', valorTotal: 0, numeroParcelas: 1, objeto: '', dataAssinatura: '', dataInicio: '', dataFim: '', status: 'rascunho', observacoes: '' };
 
@@ -65,6 +66,7 @@ export default function Contratos() {
                   <td><span className={`badge ${c.status}`}>{c.status}</span></td>
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(c)}>Editar</button>{' '}
+                    <button className="btn btn-linha btn-mini" onClick={() => exportarContratoPdf(c)}>PDF</button>{' '}
                     <button className="btn btn-perigo btn-mini" onClick={() => excluir(c._id)}>Excluir</button>
                   </td>
                 </tr>

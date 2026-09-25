@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
+import { exportarFinanceiroCsv } from '../utils/exporters.js';
 
 const vazio = { tipo: 'pagar', descricao: '', categoria: '', valor: 0, dataVencimento: '', status: 'pendente', obra: '', cliente: '', fornecedor: '', formaPagamento: '', observacoes: '' };
 
@@ -53,7 +54,10 @@ export default function Financeiro() {
     <div>
       <div className="topbar">
         <h1>Financeiro (Contas a pagar / receber)</h1>
-        <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo lançamento</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-linha" onClick={() => exportarFinanceiroCsv(lista)}>Exportar CSV</button>
+          <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo lançamento</button>
+        </div>
       </div>
 
       <div className="grid-cards">

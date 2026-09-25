@@ -9,6 +9,8 @@ const menu = [
   { to: '/contratos', icone: 'contrato', texto: 'Contratos' },
   { to: '/financeiro', icone: 'financeiro', texto: 'Financeiro' },
   { to: '/materiais', icone: 'materiais', texto: 'Materiais / Estoque' },
+  { to: '/fornecedores', icone: 'clientes', texto: 'Fornecedores' },
+  { to: '/compras', icone: 'orcamento', texto: 'Compras / Pedidos' },
 ];
 
 function Icone({ nome }) {

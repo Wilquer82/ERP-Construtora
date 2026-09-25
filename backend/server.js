@@ -12,6 +12,8 @@ import orcamentoRoutes from './routes/orcamentos.js';
 import contratoRoutes from './routes/contratos.js';
 import financeiroRoutes from './routes/financeiro.js';
 import materialRoutes from './routes/materiais.js';
+import fornecedorRoutes from './routes/fornecedores.js';
+import compraRoutes from './routes/compras.js';
 import dashboardRoutes from './routes/dashboard.js';
 import medicaoRoutes from './routes/medicoes.js';
 
@@ -52,6 +54,8 @@ app.use('/api/orcamentos', orcamentoRoutes);
 app.use('/api/contratos', contratoRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/materiais', materialRoutes);
+app.use('/api/fornecedores', fornecedorRoutes);
+app.use('/api/compras', compraRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true, api: 'Sienge-MERN essencial', versao: '1.0.0' }));

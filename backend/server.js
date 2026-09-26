@@ -26,13 +26,15 @@ if (!process.env.MONGO_URI || !process.env.JWT_SECRET || process.env.JWT_SECRET.
 
 const app = express();
 const defaultOrigins = [
+	'https://erp-construtora-1.onrender.com',
 	'https://erp-construtora-site.onrender.com',
 	'http://localhost:5173'
 ];
-const origins = (process.env.CORS_ORIGIN || defaultOrigins.join(','))
+const configuredOrigins = (process.env.CORS_ORIGIN || '')
 	.split(',')
 	.map((origin) => origin.trim())
 	.filter(Boolean);
+const origins = [...new Set([...defaultOrigins, ...configuredOrigins])];
 app.use(helmet());
 app.use(cors({ origin: origins }));
 app.use(express.json({ limit: '100kb' }));

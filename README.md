@@ -88,6 +88,10 @@ Todas as rotas (exceto `/auth/login` e `/auth/registro`) exigem header `Authoriz
 
 ## Produção
 
+No servico do backend no Render, configure `CORS_ORIGIN` com a URL exata do frontend
+(por exemplo, `https://erp-construtora-1.onrender.com`). O backend tambem inclui esse
+dominio na lista padrao; valores adicionais em `CORS_ORIGIN` sao aceitos.
+
 ```bash
 cd frontend && npm run build   # gera dist/
 # sirva dist/ a partir do backend (express.static) ou hospede na Vercel/Netlify

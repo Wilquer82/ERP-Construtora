@@ -109,6 +109,42 @@ router.get('/resumo', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.get('/obras-pendentes', async (req, res, next) => {
+  try {
+    const obrasBase = await Obra.find({ status: { $in: ['em_andamento', 'planejamento'] } })
+      .populate('cliente', 'nome')
+      .sort({ dataPrevisaoFim: 1, createdAt: -1 });
+
+    const obras = await incluirProgressoObras(obrasBase);
+
+    res.json(Obras.map((obra) => ({
+      _id: obra._id,
+      codigo: obra.codigo,
+      nome: obra.nome,
+      status: obra.status,
+      cliente: obra.cliente?.nome || '',
+      valorOrcamento: Number(obra.valorOrcamento) || 0,
+      percentualConclusao: Number(obra.percentualConclusao) || 0,
+      percentualFinanceiro: Number(obra.percentualFinanceiro) || 0,
+      dataPrevisaoFim: obra.dataPrevisaoFim,
+      custoRealizado: obra.custoRealizado || {
+        maoDeObra: 0,
+        materiais: 0,
+        veiculos: 0,
+        combustivel: 0,
+        indiretos: 0,
+        total: 0
+      },
+      receitaRealizada: Number(obra.receitaRealizada) || 0,
+      receitaAReceber: Number(obra.receitaAReceber) || 0,
+      lucroReal: Number(obra.lucroReal) || 0,
+      margemPercentual: Number(obra.margemPercentual) || 0
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/alertas', async (req, res, next) => {
   try {
     const agora = new Date();

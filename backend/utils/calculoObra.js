@@ -1,15 +1,15 @@
 import mongoose from 'mongoose';
 import { runWithTenant } from '../middleware/tenantContext.js';
 import { currentTenant } from '../middleware/tenantContext.js';
-
-const Obra = mongoose.model('Obra');
-const Lancamento = mongoose.model('Lancamento');
-const Ponto = mongoose.model('Ponto');
-const Material = mongoose.model('Material');
-const Etapa = mongoose.model('Etapa');
+import Obra from '../models/Obra.js';
+import Lancamento from '../models/Lancamento.js';
+import Ponto from '../models/Ponto.js';
+import Material from '../models/Material.js';
+import Etapa from '../models/Etapa.js';
+import LancamentoFoto from '../models/LancamentoFoto.js';
 
 async function recalcularObraInternal(obraId) {
-  const obra = await Obra.findById(obraId).select('empresa nome codigo valorOrcamento custoRealizado.receitaRealizada receitaRealizada receitaAReceber lucroReal margemPercentual percentualFisico percentualFinanceiro');
+    const obra = await Obra.findById(obraId).select('empresa nome codigo valorOrcamento custoRealizado receitaRealizada receitaAReceber lucroReal margemPercentual percentualFisico percentualFinanceiro');
   if (!obra) return null;
 
   const empresaId = String(obra.empresa);
@@ -41,7 +41,6 @@ async function recalcularObraInternal(obraId) {
   obra.custoRealizado.indiretos = indiretosResult[0]?.total || 0;
 
   // 5. COMBUSTÍVEL = soma dos LancamentoFoto confirmados
-  const LancamentoFoto = mongoose.model('LancamentoFoto');
   const combustivelResult = await LancamentoFoto.aggregate([
     { $match: { obraConfirmada: obra._id, empresa: mongoose.Types.ObjectId(empresaId), status: 'confirmado' } },
     { $group: { _id: null, total: { $sum: '$valor' } } }

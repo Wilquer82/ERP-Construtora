@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 const menu = [
   { to: '/', icone: 'dashboard', texto: 'Dashboard', fim: true },
   { to: '/dashboard/assistente', icone: 'assistente', texto: 'Assistente' },
+  { to: '/dashboard/obras-pendentes', icone: 'obra', texto: 'Obras em Andamento' },
   { to: '/obras', icone: 'obra', texto: 'Obras' },
   { to: '/clientes', icone: 'clientes', texto: 'Clientes' },
   { to: '/orcamentos', icone: 'orcamento', texto: 'Orçamentos' },

@@ -5,6 +5,7 @@ import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DashboardAtencao from './pages/Dashboard/Atencao.jsx';
 import Assistente from './pages/Dashboard/Assistente.jsx';
+import ObrasPendentes from './pages/Dashboard/ObrasPendentes.jsx';
 import RH from './pages/RH/RH.jsx';
 import Clientes from './pages/Clientes.jsx';
 import Obras from './pages/Obras.jsx';
@@ -57,6 +58,7 @@ export default function App() {
          <Route path="rh/*" element={<RH />} />
          <Route path="dashboard/resumo" element={<Dashboard />} />
          <Route path="dashboard/assistente" element={<Assistente />} />
+<Route path="dashboard/obras-pendentes" element={<ObrasPendentes />} />
          <Route path="usuarios" element={<RotaAdmin><Usuarios /></RotaAdmin>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

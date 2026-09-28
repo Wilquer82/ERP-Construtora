@@ -58,7 +58,7 @@ export default function Atencao() {
       <div className="topbar">
         <h1>Dashboard</h1>
         <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
-          {LEMBRAMENTOS_MOCK.filter((l) => l.prioridade === 'critico' && l.status === 'pendente').length} item(s) crítico(s) • {LEMBRAMENTOS_MOCK.filter((l) => l.prioridade === 'atencao' && l.status === 'pendente').length} item(s) de atenção
+          {LEMBRETES_MOCK.filter((l) => l.prioridade === 'critico' && l.status === 'pendente').length} item(s) crítico(s) • {LEMBRETES_MOCK.filter((l) => l.prioridade === 'atencao' && l.status === 'pendente').length} item(s) de atenção
         </p>
       </div>
 

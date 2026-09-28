@@ -2,6 +2,7 @@ import express from 'express';
 import Material from '../models/Material.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick, isPositiveNumber } from '../utils/fields.js';
+import { recalcularObra } from '../utils/calculoObra.js';
 
 const router = express.Router();
 router.use(protect);
@@ -35,14 +36,22 @@ router.post('/:id/movimento', adminOnly, async (req, res, next) => {
     if (!['entrada', 'saida'].includes(tipo)) return res.status(400).json({ error: 'Tipo invalido' });
     if (!isPositiveNumber(quantidade)) return res.status(400).json({ error: 'Quantidade deve ser maior que zero' });
     const qtd = Number(quantidade);
-    const filtro = { _id: req.params.id };
-    if (tipo === 'saida') filtro.estoqueAtual = { $gte: qtd };
+    const valorTotal = tipo === 'saida' ? qtd * (Number(doc?.custoUnitario) || doc?.custoUnitario || 0) : 0;
+    const movimentoData = tipo === 'saida'
+      ? { tipo, quantidade: qtd, valorTotal, obra, observacao }
+      : { tipo, quantidade: qtd, obra, observacao };
     const doc = await Material.findOneAndUpdate(
       filtro,
-      { $inc: { estoqueAtual: tipo === 'entrada' ? qtd : -qtd }, $push: { movimentos: { tipo, quantidade: qtd, obra, observacao } } },
+      { $inc: { estoqueAtual: tipo === 'entrada' ? qtd : -qtd }, $push: { movimentos: movimentoData } },
       { new: true, runValidators: true }
     );
     if (!doc) return res.status(tipo === 'saida' ? 409 : 404).json({ error: tipo === 'saida' ? 'Estoque insuficiente' : 'Nao encontrado' });
+    if (tipo === 'saida' && obra) {
+      setImmediate(async () => {
+        try { await recalcularObra(String(obra))(); }
+        catch (err) { console.error('[calculoObra] Falha ao recalcular:', err.message); }
+      });
+    }
     res.json(doc);
   } catch (err) { next(err); }
 });

@@ -4,6 +4,7 @@ import tenantPlugin from './plugins/tenant.js';
 const movimentoSchema = new mongoose.Schema({
   tipo: { type: String, enum: ['entrada', 'saida'], required: true },
   quantidade: { type: Number, required: true, min: 0.0001 },
+  valorTotal: { type: Number, default: 0, min: 0 },
   data: { type: Date, default: Date.now },
   obra: { type: mongoose.Schema.Types.ObjectId, ref: 'Obra' },
   pedidoCompra: { type: mongoose.Schema.Types.ObjectId, ref: 'PedidoCompra' },

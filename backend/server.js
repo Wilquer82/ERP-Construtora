@@ -27,6 +27,7 @@ import lembreteRoutes from './routes/lembretes.js';
 import folhaRoutes from './routes/folhas.js';
 import pontoRoutes from './routes/pontos.js';
 import certidaoRoutes from './routes/certidoes.js';
+import lancamentoFotoRoutes from './routes/lancamentoFoto.js';
 import assistenteRoutes from './routes/assistente.js';
 import mongoose from 'mongoose';
 
@@ -110,6 +111,7 @@ app.use('/api/folhas', folhaRoutes);
 app.use('/api/pontos', pontoRoutes);
 app.use('/api/certidoes', certidaoRoutes);
 app.use('/api/assistente', assistenteRoutes);
+app.use('/api/lancamento-foto', lancamentoFotoRoutes);
 
 app.get('/healthz', (req, res) => {
 	if (mongoose.connection.readyState !== 1) {

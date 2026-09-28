@@ -5,9 +5,22 @@ import ContaBancaria from '../models/ContaBancaria.js';
 import MovimentoBancario from '../models/MovimentoBancario.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
+import { recalcularObra } from '../utils/calculoObra.js';
 
 const router = express.Router();
 router.use(protect);
+
+function dispararCalculoObra(lancamento) {
+  if (lancamento?.obra && lancamento.status === 'pago') {
+    setImmediate(async () => {
+      try {
+        await recalcularObra(String(lancamento.obra))();
+      } catch (err) {
+        console.error('[calculoObra] Falha ao recalcular obra:', err.message);
+      }
+    });
+  }
+}
 
 // GET /api/financeiro?tipo=pagar&status=pago
 router.get('/', async (req, res, next) => {
@@ -119,6 +132,7 @@ router.post('/:id/baixar', adminOnly, async (req, res, next) => {
       doc = lancamento;
     });
     await doc.populate('contaBancaria', 'nome banco numeroConta');
+    dispararCalculoObra(doc);
     res.json(doc);
   } catch (err) {
     if ([400, 404, 409].includes(err?.status)) return res.status(err.status).json({ error: err.message });

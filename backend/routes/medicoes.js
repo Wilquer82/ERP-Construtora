@@ -6,6 +6,7 @@ import Orcamento from '../models/Orcamento.js';
 import Material from '../models/Material.js';
 import { protect } from '../middleware/auth.js';
 import { obraAccess } from '../middleware/obraAccess.js';
+import { recalcularObra } from '../utils/calculoObra.js';
 
 const router = express.Router();
 router.use(protect);
@@ -91,6 +92,10 @@ router.post('/', obraAccess, async (req, res, next) => {
         observacao: observacao ? String(observacao).trim() : undefined
       });
       await medicao.populate('etapa', 'descricao unidade');
+      setImmediate(async () => {
+        try { await recalcularObra(String(obra))(); }
+        catch (err) { console.error('[calculoObra] Falha ao recalcular:', err.message); }
+      });
       return res.status(201).json({ medicao, etapa: etapaAtualizada, sugestoesEstoque });
     } catch (err) {
       await Etapa.updateOne({ _id: etapa }, {
@@ -134,7 +139,13 @@ router.post('/:id/baixa-estoque', obraAccess, async (req, res, next) => {
       },
       { new: true, runValidators: true }
     );
-    if (material) return res.json({ material, quantidade: sugestao.quantidade });
+    if (material) {
+      setImmediate(async () => {
+        try { await recalcularObra(String(medicao.obra))(); }
+        catch (err) { console.error('[calculoObra] Falha ao recalcular:', err.message); }
+      });
+      return res.json({ material, quantidade: sugestao.quantidade });
+    }
 
     const materialAtual = await Material.findById(sugestao.material);
     if (!materialAtual) return res.status(404).json({ error: 'Material nao encontrado' });

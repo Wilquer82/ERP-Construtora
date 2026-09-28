@@ -18,7 +18,28 @@ const obraSchema = new mongoose.Schema({
   dataInicio: Date,
   dataPrevisaoFim: Date,
   dataConclusao: Date,
-  responsavel: String
+  responsavel: String,
+  orcamentoPrevisto: {
+    maoDeObra: { type: Number, default: 0 },
+    materiais: { type: Number, default: 0 },
+    veiculos: { type: Number, default: 0 },
+    indiretos: { type: Number, default: 0 },
+    total: { type: Number, default: 0 }
+  },
+  custoRealizado: {
+    maoDeObra: { type: Number, default: 0 },
+    materiais: { type: Number, default: 0 },
+    veiculos: { type: Number, default: 0 },
+    combustivel: { type: Number, default: 0 },
+    indiretos: { type: Number, default: 0 },
+    total: { type: Number, default: 0 }
+  },
+  receitaRealizada: { type: Number, default: 0 },
+  receitaAReceber: { type: Number, default: 0 },
+  lucroReal: { type: Number, default: 0 },
+  margemPercentual: { type: Number, default: 0 },
+  percentualFisico: { type: Number, default: 0 },
+  percentualFinanceiro: { type: Number, default: 0 }
 }, { timestamps: true });
 
 obraSchema.index({ empresa: 1, codigo: 1 }, { unique: true, partialFilterExpression: { codigo: { $type: 'string' } } });

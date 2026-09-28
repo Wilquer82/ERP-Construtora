@@ -1,6 +1,6 @@
 // IndexedDB utilitário para armazenamento offline de medições
 const DB_NAME = 'ConstruERP';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'medicoes_offline';
 
 function openDB() {
@@ -14,6 +14,10 @@ function openDB() {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
         store.createIndex('obra', 'obra', { unique: false });
         store.createIndex('synced', 'synced', { unique: false });
+      } else {
+        const store = event.target.result.transaction.objectStore(STORE_NAME);
+        if (!store.indexNames.contains('synced')) store.createIndex('synced', 'synced', { unique: false });
+        if (!store.indexNames.contains('obra')) store.createIndex('obra', 'obra', { unique: false });
       }
     };
   });
@@ -48,10 +52,15 @@ export async function getUnsyncedMedicoes() {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index('synced');
+    let index;
+    try {
+      index = store.index('synced');
+    } catch {
+      return resolve([]);
+    }
     const request = index.getAll(false);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve([]);
     tx.oncomplete = () => db.close();
   });
 }
@@ -84,7 +93,12 @@ export async function clearSyncedMedicoes() {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index('synced');
+    let index;
+    try {
+      index = store.index('synced');
+    } catch {
+      return resolve();
+    }
     const request = index.openCursor(true);
     request.onsuccess = (event) => {
       const cursor = event.target.result;
@@ -93,7 +107,7 @@ export async function clearSyncedMedicoes() {
         cursor.continue();
       }
     };
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve();
     tx.oncomplete = () => { db.close(); resolve(); };
   });
 }

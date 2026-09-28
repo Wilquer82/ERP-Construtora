@@ -32,7 +32,7 @@ export default function Calendario() {
   const diasDoMes = ultimoDia.getDate();
   const primeiroDiaSemana = primeiroDia.getDay();
 
-  const eventosDoMes = (CALANDARIO_EVENTOS_MOCK || []).filter((ev) => {
+  const eventosDoMes = (CALENDARIO_EVENTOS_MOCK || []).filter((ev) => {
     const evData = new Date(ev.data);
     const matchCategoria = filtroCategoria[ev.categoria];
     return evData.getMonth() === mesAtual && evData.getFullYear() === anoAtual && matchCategoria;

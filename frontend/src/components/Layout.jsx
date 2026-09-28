@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 const menu = [
   { to: '/', icone: 'dashboard', texto: 'Dashboard', fim: true },
+  { to: '/dashboard/assistente', icone: 'assistente', texto: 'Assistente' },
   { to: '/obras', icone: 'obra', texto: 'Obras' },
   { to: '/clientes', icone: 'clientes', texto: 'Clientes' },
   { to: '/orcamentos', icone: 'orcamento', texto: 'Orçamentos' },
@@ -25,6 +26,7 @@ function Icone({ nome }) {
     financeiro: <><path d="M20 7V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" /><path d="M4 7h16v10H4z" /><path d="M16 12h.01" /></>,
     materiais: <><path d="M21 8.2v7.6a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 15.8V8.2a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4a2 2 0 0 1 1 1.73Z" /><path d="M3 8.2 12 13.4l9-5.2" /><path d="M12 13.4V21" /></>,
     rh: <><path d="M12 12c2.7 0 8 1.3 8 4v2H4v-2c0-2.7 5.3-4 8-4Z" /><circle cx="12" cy="8" r="3" /></>,
+    assistente: <><circle cx="12" cy="12" r="9" /><path d="M9 9h.01M15 9h.01M9 15c1.5 2 6 2 9 0" /></>,
     sair: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></>,
   };
 

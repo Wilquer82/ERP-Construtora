@@ -27,6 +27,7 @@ import lembreteRoutes from './routes/lembretes.js';
 import folhaRoutes from './routes/folhas.js';
 import pontoRoutes from './routes/pontos.js';
 import certidaoRoutes from './routes/certidoes.js';
+import assistenteRoutes from './routes/assistente.js';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -108,6 +109,7 @@ app.use('/api/lembretes', lembreteRoutes);
 app.use('/api/folhas', folhaRoutes);
 app.use('/api/pontos', pontoRoutes);
 app.use('/api/certidoes', certidaoRoutes);
+app.use('/api/assistente', assistenteRoutes);
 
 app.get('/healthz', (req, res) => {
 	if (mongoose.connection.readyState !== 1) {
@@ -128,6 +130,10 @@ app.use(errorHandler);
 
 async function iniciar() {
 	await connectDB();
+	const { criarAssistente } = await import('./services/assistente/index.js');
+	await criarAssistente();
+	const { iniciarScheduler } = await import('./services/assistente/scheduler.js');
+	iniciarScheduler();
 	app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
 }
 

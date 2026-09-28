@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DashboardAtencao from './pages/Dashboard/Atencao.jsx';
+import Assistente from './pages/Dashboard/Assistente.jsx';
 import RH from './pages/RH/RH.jsx';
 import Clientes from './pages/Clientes.jsx';
 import Obras from './pages/Obras.jsx';
@@ -44,7 +45,7 @@ export default function App() {
       <Route path="/reset-senha" element={<ResetSenha />} />
       <Route path="/trocar-senha" element={<RotaProtegida><TrocarSenha /></RotaProtegida>} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
-         <Route index element={<DashboardAtencao />} />
+          <Route index element={<DashboardAtencao />} />
          <Route path="clientes" element={<Clientes />} />
          <Route path="obras" element={<Obras />} />
          <Route path="orcamentos" element={<Orcamentos />} />
@@ -55,6 +56,7 @@ export default function App() {
          <Route path="compras" element={<Compras />} />
          <Route path="rh/*" element={<RH />} />
          <Route path="dashboard/resumo" element={<Dashboard />} />
+         <Route path="dashboard/assistente" element={<Assistente />} />
          <Route path="usuarios" element={<RotaAdmin><Usuarios /></RotaAdmin>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -54,7 +54,7 @@ router.get('/fluxo-caixa', async (req, res, next) => {
 // GET /api/dashboard/resumo -> indicadores para a tela inicial
 router.get('/resumo', async (req, res, next) => {
   try {
-    const [totalObras, totalClientes, totalContratos, aPagar, aReceber, materiaisAbaixo, materiaisBaixo, obrasPorStatus, obrasRecentes] = await Promise.all([
+    const [totalObras, totalClientes, totalContratos, aPagar, aReceber, materiaisAbaixo, materiaisBaixo, obrasPorStatus, obrasBase] = await Promise.all([
       Obra.countDocuments(),
       Cliente.countDocuments(),
       Contrato.countDocuments(),
@@ -72,10 +72,11 @@ router.get('/resumo', async (req, res, next) => {
         { $group: { _id: '$status', total: { $sum: 1 } } },
         { $sort: { total: -1 } }
       ]),
-      incluirProgressoObras(await Obra.find().populate('cliente', 'nome').sort({ createdAt: -1 }).limit(5))
+      Obra.find().populate('cliente', 'nome').sort({ createdAt: -1 })
     ]);
-
-    const obrasConclusao = await incluirProgressoObras(await Obra.find().populate('cliente', 'nome').sort({ createdAt: -1 }));
+    const obrasComIndicadores = await incluirProgressoObras(obrasBase);
+    const obrasRecentes = obrasComIndicadores.slice(0, 5);
+    const obrasConclusao = obrasComIndicadores;
 
     res.json({
       totalObras,
@@ -99,7 +100,10 @@ router.get('/resumo', async (req, res, next) => {
       obrasConclusao: obrasConclusao.map((obra) => ({
         _id: obra._id,
         nome: obra.nome,
-        percentualConclusao: Number(obra.percentualConclusao) || 0
+        percentualConclusao: Number(obra.percentualConclusao) || 0,
+        percentualFinanceiro: Number(obra.percentualFinanceiro) || 0,
+        valorOrcamentoComparativo: Number(obra.valorOrcamentoComparativo) || 0,
+        valorConsumido: Number(obra.valorConsumido) || 0
       }))
     });
   } catch (err) { next(err); }

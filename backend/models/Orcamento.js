@@ -7,6 +7,7 @@ const itemOrcamentoSchema = new mongoose.Schema({
   quantidade: { type: Number, default: 1, min: 0.0001 },
   custoUnitario: { type: Number, default: 0, min: 0 },
   materialVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Material', default: null },
+  etapa: { type: mongoose.Schema.Types.ObjectId, ref: 'Etapa', default: null },
 }, { _id: true });
 
 const orcamentoSchema = new mongoose.Schema({

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { fmtMoeda } from '../api.js';
 
-const vazioItem = { material: '', descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0 };
+const vazioItem = { material: '', materialVinculado: '', descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0 };
 const vazio = {
   numero: '',
   fornecedor: '',
@@ -13,23 +13,33 @@ const vazio = {
   itens: [ { ...vazioItem } ]
 };
 
+const hoje = () => {
+  const data = new Date();
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+};
+
 export default function Compras() {
   const [lista, setLista] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [obras, setObras] = useState([]);
+  const [materiais, setMateriais] = useState([]);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
+  const [recebendo, setRecebendo] = useState(null);
+  const [vencimentoRecebimento, setVencimentoRecebimento] = useState(hoje());
 
   const carregar = async () => {
-    const [resCompras, resFornecedores, resObras] = await Promise.all([
+    const [resCompras, resFornecedores, resObras, resMateriais] = await Promise.all([
       api.get('/compras'),
       api.get('/fornecedores'),
-      api.get('/obras')
+      api.get('/obras'),
+      api.get('/materiais')
     ]);
     setLista(resCompras.data);
     setFornecedores(resFornecedores.data);
     setObras(resObras.data);
+    setMateriais(resMateriais.data);
   };
 
   useEffect(() => { carregar(); }, []);
@@ -42,7 +52,12 @@ export default function Compras() {
       ...c,
       fornecedor: c.fornecedor?._id || c.fornecedor || '',
       obra: c.obra?._id || c.obra || '',
-      itens: (c.itens || []).length ? c.itens.map((i) => ({ ...i, quantidade: Number(i.quantidade || 0), custoUnitario: Number(i.custoUnitario || 0) })) : [{ ...vazioItem }],
+      itens: (c.itens || []).length ? c.itens.map((i) => ({
+        ...i,
+        materialVinculado: i.materialVinculado?._id || i.materialVinculado || '',
+        quantidade: Number(i.quantidade || 0),
+        custoUnitario: Number(i.custoUnitario || 0)
+      })) : [{ ...vazioItem }],
       dataPedido: c.dataPedido ? new Date(c.dataPedido).toISOString().slice(0, 10) : '',
       dataEntregaPrevista: c.dataEntregaPrevista ? new Date(c.dataEntregaPrevista).toISOString().slice(0, 10) : ''
     });
@@ -57,6 +72,19 @@ export default function Compras() {
     setForm({ ...form, itens });
   };
 
+  const vincularMaterialItem = (index, id) => {
+    const material = materiais.find((item) => item._id === id);
+    const itens = [...form.itens];
+    itens[index] = {
+      ...itens[index],
+      materialVinculado: id,
+      material: material?.nome || '',
+      unidade: material?.unidade || itens[index].unidade,
+      descricao: itens[index].descricao || material?.nome || ''
+    };
+    setForm({ ...form, itens });
+  };
+
   const adicionarItem = () => setForm({ ...form, itens: [...form.itens, { ...vazioItem }] });
   const removerItem = (index) => {
     if (form.itens.length === 1) return setForm({ ...form, itens: [{ ...vazioItem }] });
@@ -65,22 +93,42 @@ export default function Compras() {
 
   const salvar = async (e) => {
     e.preventDefault();
-    const payload = {
-      ...form,
-      itens: form.itens.map((item) => ({
-        ...item,
-        quantidade: Number(item.quantidade || 0),
-        custoUnitario: Number(item.custoUnitario || 0)
-      }))
-    };
-    if (editando) await api.put(`/compras/${editando}`, payload);
-    else await api.post('/compras', payload);
-    setModal(false); carregar();
+    try {
+      const payload = {
+        ...form,
+        itens: form.itens.map((item) => ({
+          ...item,
+          quantidade: Number(item.quantidade || 0),
+          custoUnitario: Number(item.custoUnitario || 0)
+        }))
+      };
+      if (editando) await api.put(`/compras/${editando}`, payload);
+      else await api.post('/compras', payload);
+      setModal(false); carregar();
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível salvar o pedido de compra.');
+    }
   };
 
   const excluir = async (id) => {
     if (!window.confirm('Excluir este pedido de compra?')) return;
     await api.delete(`/compras/${id}`); carregar();
+  };
+
+  const abrirRecebimento = (pedido) => {
+    setRecebendo(pedido);
+    setVencimentoRecebimento(hoje());
+  };
+
+  const confirmarRecebimento = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/compras/${recebendo._id}/receber`, { dataVencimento: vencimentoRecebimento });
+      setRecebendo(null);
+      await carregar();
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível registrar o recebimento.');
+    }
   };
 
   return (
@@ -116,8 +164,9 @@ export default function Compras() {
                   <td>{c.status}</td>
                   <td>{fmtMoeda(c.valorTotal || 0)}</td>
                   <td>
-                    <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(c)}>Editar</button>{' '}
-                    <button className="btn btn-perigo btn-mini" onClick={() => excluir(c._id)}>Excluir</button>
+                    <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(c)} disabled={c.status === 'recebido'}>Editar</button>{' '}
+                    {['aprovado', 'em_aberto'].includes(c.status) && <button className="btn btn-primario btn-mini" onClick={() => abrirRecebimento(c)}>Receber</button>}{' '}
+                    <button className="btn btn-perigo btn-mini" onClick={() => excluir(c._id)} disabled={c.status === 'recebido'}>Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -150,7 +199,6 @@ export default function Compras() {
                     <option value="rascunho">Rascunho</option>
                     <option value="aprovado">Aprovado</option>
                     <option value="em_aberto">Em aberto</option>
-                    <option value="recebido">Recebido</option>
                     <option value="cancelado">Cancelado</option>
                   </select>
                 </div>
@@ -165,8 +213,13 @@ export default function Compras() {
               </div>
 
               {(form.itens || []).map((item, index) => (
-                <div key={index} className="linha-itens" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 0.9fr 0.9fr 1fr auto', gap: 8, alignItems: 'end', marginBottom: 12 }}>
-                  <div className="campo"><label>Material</label><input value={item.material} onChange={(e) => atualizarItem(index, 'material', e.target.value)} /></div>
+                <div key={index} className="linha-itens" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.5fr 0.8fr 0.8fr 1fr auto', gap: 8, alignItems: 'end', marginBottom: 12 }}>
+                  <div className="campo"><label>Material do estoque *</label>
+                    <select required value={item.materialVinculado || ''} onChange={(e) => vincularMaterialItem(index, e.target.value)}>
+                      <option value="">Selecione</option>
+                      {materiais.map((material) => <option key={material._id} value={material._id}>{material.nome}</option>)}
+                    </select>
+                  </div>
                   <div className="campo"><label>Descrição</label><input value={item.descricao} onChange={(e) => atualizarItem(index, 'descricao', e.target.value)} /></div>
                   <div className="campo"><label>Unidade</label><input value={item.unidade} onChange={(e) => atualizarItem(index, 'unidade', e.target.value)} /></div>
                   <div className="campo"><label>Qtd</label><input type="number" min="0.01" step="0.01" value={item.quantidade} onChange={(e) => atualizarItem(index, 'quantidade', e.target.value)} /></div>
@@ -182,6 +235,21 @@ export default function Compras() {
               <div className="modal-acoes">
                 <button type="button" className="btn btn-linha" onClick={() => setModal(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primario">Salvar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {recebendo && (
+        <div className="modal-fundo" onClick={() => setRecebendo(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Registrar recebimento — {recebendo.numero}</h2>
+            <p>Os materiais vinculados entrarão no estoque e será criada uma conta a pagar de {fmtMoeda(recebendo.valorTotal)}.</p>
+            <form onSubmit={confirmarRecebimento}>
+              <div className="campo"><label>Vencimento da conta a pagar *</label><input required type="date" value={vencimentoRecebimento} onChange={(e) => setVencimentoRecebimento(e.target.value)} /></div>
+              <div className="modal-acoes">
+                <button type="button" className="btn btn-linha" onClick={() => setRecebendo(null)}>Cancelar</button>
+                <button type="submit" className="btn btn-primario">Confirmar recebimento</button>
               </div>
             </form>
           </div>

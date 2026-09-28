@@ -61,7 +61,8 @@ export default function Dashboard() {
 
   const barData = (dados.obrasConclusao || []).slice(0, 8).map((obra) => ({
     name: obra.nome.length > 18 ? `${obra.nome.slice(0, 18)}...` : obra.nome,
-    percentualConclusao: Number(obra.percentualConclusao) || 0
+    percentualFisico: Number(obra.percentualConclusao) || 0,
+    percentualFinanceiro: Number(obra.percentualFinanceiro) || 0
   }));
 
   return (
@@ -112,15 +113,17 @@ export default function Dashboard() {
         </div>
 
         <div className="card">
-          <h3 style={{ marginBottom: 12, color: 'var(--primaria-escura)' }}>Conclusão por obra</h3>
+          <h3 style={{ marginBottom: 12, color: 'var(--primaria-escura)' }}>Avanço físico × orçamento consumido</h3>
           <div style={{ width: '100%', height: 250 }}>
             <ResponsiveContainer>
               <BarChart data={barData} layout="vertical" margin={{ left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                <XAxis type="number" tickFormatter={(v) => `${v}%`} />
                 <YAxis type="category" dataKey="name" width={90} />
                 <Tooltip formatter={(v) => `${v}%`} />
-                <Bar dataKey="percentualConclusao" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                <Legend />
+                <Bar dataKey="percentualFisico" name="Avanço físico" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="percentualFinanceiro" name="Orçamento consumido (pago)" fill="#f59e0b" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -149,7 +152,7 @@ export default function Dashboard() {
         ) : (
           <table>
             <thead>
-              <tr><th>Obra</th><th>Cliente</th><th>Status</th><th>Conclusão</th><th>Orçamento</th><th>Início</th></tr>
+              <tr><th>Obra</th><th>Cliente</th><th>Status</th><th>Avanço físico</th><th>Orçamento consumido</th><th>Início</th></tr>
             </thead>
             <tbody>
               {dados.obrasRecentes.map((o) => (
@@ -163,7 +166,7 @@ export default function Dashboard() {
                       <small>{o.percentualConclusao}%</small>
                     </div>
                   </td>
-                  <td>{fmtMoeda(o.valorOrcamento)}</td>
+                  <td>{fmtMoeda(o.valorConsumido)} / {fmtMoeda(o.valorOrcamentoComparativo)} ({Number(o.percentualFinanceiro) || 0}%)</td>
                   <td>{fmtData(o.dataInicio)}</td>
                 </tr>
               ))}

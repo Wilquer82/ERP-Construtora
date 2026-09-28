@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
 import { exportarContratoPdf } from '../utils/exporters.js';
 
-const vazio = { numero: '', obra: '', cliente: '', valorTotal: 0, numeroParcelas: 1, objeto: '', dataAssinatura: '', dataInicio: '', dataFim: '', status: 'rascunho', observacoes: '' };
+const vazio = { numero: '', obra: '', cliente: '', valorTotal: 0, numeroParcelas: 1, dataPrimeiroVencimento: '', objeto: '', dataAssinatura: '', dataInicio: '', dataFim: '', status: 'rascunho', observacoes: '' };
 
 export default function Contratos() {
   const [lista, setLista] = useState([]);
@@ -23,16 +23,22 @@ export default function Contratos() {
   const abrirEdicao = (c) => {
     setEditando(c._id);
     setForm({ ...vazio, ...c, obra: c.obra?._id || '', cliente: c.cliente?._id || '',
-      dataAssinatura: c.dataAssinatura?.slice(0, 10) || '', dataInicio: c.dataInicio?.slice(0, 10) || '', dataFim: c.dataFim?.slice(0, 10) || '', numeroParcelas: c.numeroParcelas || 1 });
+      dataAssinatura: c.dataAssinatura?.slice(0, 10) || '', dataInicio: c.dataInicio?.slice(0, 10) || '', dataFim: c.dataFim?.slice(0, 10) || '', numeroParcelas: c.numeroParcelas || 1,
+      dataPrimeiroVencimento: c.dataPrimeiroVencimento?.slice(0, 10) || '' });
     setModal(true);
   };
 
   const salvar = async (e) => {
     e.preventDefault();
-    const payload = { ...form, valorTotal: Number(form.valorTotal), numeroParcelas: Number(form.numeroParcelas) || 1 };
-    if (editando) await api.put(`/contratos/${editando}`, payload);
-    else await api.post('/contratos', payload);
-    setModal(false); carregar();
+    try {
+      const payload = { ...form, valorTotal: Number(form.valorTotal), numeroParcelas: Number(form.numeroParcelas) || 1 };
+      if (!payload.dataPrimeiroVencimento) delete payload.dataPrimeiroVencimento;
+      if (editando) await api.put(`/contratos/${editando}`, payload);
+      else await api.post('/contratos', payload);
+      setModal(false); carregar();
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível salvar o contrato.');
+    }
   };
 
   const excluir = async (id) => {
@@ -52,7 +58,7 @@ export default function Contratos() {
           <div className="vazio">Nenhum contrato cadastrado.</div>
         ) : (
           <table>
-            <thead><tr><th>Nº</th><th>Obra</th><th>Cliente</th><th>Valor total</th><th>Parcelas</th><th>Assinatura</th><th>Vigência</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nº</th><th>Obra</th><th>Cliente</th><th>Valor total</th><th>Parcelas</th><th>1º vencimento</th><th>Assinatura</th><th>Vigência</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
               {lista.map((c) => (
                 <tr key={c._id}>
@@ -61,6 +67,7 @@ export default function Contratos() {
                   <td>{c.cliente?.nome || '-'}</td>
                   <td><strong>{fmtMoeda(c.valorTotal)}</strong></td>
                   <td>{c.numeroParcelas || 1}</td>
+                  <td>{fmtData(c.dataPrimeiroVencimento)}</td>
                   <td>{fmtData(c.dataAssinatura)}</td>
                   <td>{fmtData(c.dataInicio)} → {fmtData(c.dataFim)}</td>
                   <td><span className={`badge ${c.status}`}>{c.status}</span></td>
@@ -97,6 +104,7 @@ export default function Contratos() {
                 </div>
                 <div className="campo"><label>Valor total (R$) *</label><input required type="number" step="0.01" value={form.valorTotal} onChange={(e) => setForm({ ...form, valorTotal: e.target.value })} /></div>
                 <div className="campo"><label>Nº de parcelas</label><input type="number" min="1" value={form.numeroParcelas} onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })} /></div>
+                <div className="campo"><label>1º vencimento</label><input type="date" value={form.dataPrimeiroVencimento} onChange={(e) => setForm({ ...form, dataPrimeiroVencimento: e.target.value })} /><small>As demais parcelas vencem mensalmente no mesmo dia.</small></div>
                 <div className="campo"><label>Status</label>
                   <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                     <option value="rascunho">Rascunho</option>

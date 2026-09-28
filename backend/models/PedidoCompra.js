@@ -3,6 +3,7 @@ import tenantPlugin from './plugins/tenant.js';
 
 const itemPedidoSchema = new mongoose.Schema({
   material: { type: String, default: '' },
+  materialVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Material', default: null },
   descricao: { type: String, required: true, trim: true },
   unidade: { type: String, default: 'und' },
   quantidade: { type: Number, required: true, min: 0.0001 },
@@ -17,6 +18,8 @@ const pedidoCompraSchema = new mongoose.Schema({
   status: { type: String, enum: ['rascunho', 'aprovado', 'em_aberto', 'recebido', 'cancelado'], default: 'rascunho' },
   dataPedido: { type: Date, default: Date.now },
   dataEntregaPrevista: Date,
+  dataRecebimento: Date,
+  lancamentoPagar: { type: mongoose.Schema.Types.ObjectId, ref: 'Lancamento', default: null },
   observacoes: String,
   itens: [itemPedidoSchema],
   valorTotal: { type: Number, default: 0, min: 0 }

@@ -77,8 +77,15 @@ export async function seedDemoCompany(empresa, userId) {
         cliente: cliente._id,
         descricao: 'Orcamento demonstrativo da obra',
         itens: [
-          { descricao: 'Fundacao e estrutura', unidade: 'm2', quantidade: 120, custoUnitario: 850 },
-          { descricao: 'Materiais iniciais', unidade: 'lote', quantidade: 1, custoUnitario: 32000 }
+          { descricao: 'Fundacao e estrutura', unidade: 'm2', quantidade: 120, custoUnitario: 850, etapa: etapa._id },
+          {
+            descricao: materiais[0].nome,
+            unidade: materiais[0].unidade,
+            quantidade: 200,
+            custoUnitario: materiais[0].custoUnitario,
+            materialVinculado: materiais[0]._id,
+            etapa: etapa._id
+          }
         ],
         status: 'aprovado'
       });
@@ -107,6 +114,7 @@ export async function seedDemoCompany(empresa, userId) {
         dataPedido: hoje,
         itens: materiais.slice(0, 2).map((material) => ({
           material: material.nome,
+          materialVinculado: material._id,
           descricao: material.nome,
           unidade: material.unidade,
           quantidade: 20,

@@ -7,18 +7,18 @@ Implementação **MERN** (MongoDB, Express, React, Node.js) dos módulos essenci
 | Módulo | Descrição |
 |---|---|
 | 🔐 Auth | Login, convites e recuperacao de senha com JWT, bcrypt e papeis admin/usuario |
-| 🏗️ Obras | CRUD completo, status, % de conclusão, orçamento, vinculação a cliente |
+| 🏗️ Obras | Etapas, medições, avanço físico automático e sugestão de baixa de materiais |
 | 👥 Clientes | CRUD com CPF/CNPJ, contato e endereço |
 | 📋 Orçamentos | Itens com quantidade × custo unitário, desconto/acréscimo, total automático |
-| 📄 Contratos | Número, obra, cliente, valor, vigência e status |
+| 📄 Contratos | Parcelas de recebimento geradas por vencimento, obra, cliente, valor e vigência |
 | 💰 Financeiro | Contas a pagar/receber, baixa (pagamento), filtros, saldo previsto |
 | 📦 Materiais/Estoque | Cadastro, estoque mínimo, entradas e saídas com histórico |
-| ▦ Dashboard | KPIs (obras, clientes, a pagar/receber, saldo, estoque baixo) + obras recentes |
+| ▦ Dashboard | KPIs, fluxo de caixa e avanço físico comparado ao orçamento consumido por obra |
 
 ## Pré-requisitos
 
 - **Node.js** 18+
-- **MongoDB** rodando localmente (`mongodb://localhost:27017`) — ou use o [MongoDB Atlas](https://www.mongodb.com/atlas) (grátis) e altere `MONGO_URI` no `.env`
+- **MongoDB** em replica set (necessário para transações de recebimento e contratos) — use o [MongoDB Atlas](https://www.mongodb.com/atlas) ou configure um replica set local e `MONGO_URI`
 
 ## Como rodar
 
@@ -76,6 +76,8 @@ Todas as rotas de dados exigem header `Authorization: Bearer <token>`.
 - `POST /auth/login`, `GET /auth/me`
 - `POST /auth/esqueci-senha`, `POST /auth/reset-senha`
 - `GET|POST|PUT|DELETE /clientes`, `/obras`, `/orcamentos`, `/contratos`, `/materiais`
+- `POST /medicoes`, `GET /medicoes?obra=:id`, `POST /medicoes/:id/baixa-estoque`
+- `POST /compras/:id/receber` (gera movimentos de estoque e conta a pagar)
 - `GET|POST|PUT|DELETE /financeiro` + `POST /financeiro/:id/baixar`
 - `POST /materiais/:id/movimento` (entrada/saída de estoque)
 - `GET /dashboard/resumo`
@@ -83,7 +85,6 @@ Todas as rotas de dados exigem header `Authorization: Bearer <token>`.
 ## Próximos passos (sugestões)
 
 - Relatórios PDF/Excel e gráficos (Recharts)
-- Medição de obras e Acompanhamento de Serviços (medição por item)
 - Folha de ponto / Mão de obra
 - Integração fiscal (NF-e, NFS-e, boletos)
 - Upload de anexos e fotos da obra
@@ -158,6 +159,24 @@ por empresa. Faça backup do MongoDB antes de executar. Todas as consultas de ne
 sao limitadas automaticamente a empresa autenticada; o super-admin configurado pode
 administrar empresas e ignorar esse escopo. `POST /api/empresas` cria uma empresa trial,
 convida seu administrador e popula dados demonstrativos automaticamente.
+
+### Integrações de obras, compras e contratos
+
+- O avanço físico é calculado pelas etapas como valor medido (`quantidadeMedida × preço
+  unitário`) dividido pelo valor total orçado das etapas. Não há campo manual de percentual.
+- Vincule cada item de material do orçamento aprovado à sua etapa. Ao registrar uma medição,
+  a tela sugere o consumo proporcional; o estoque só é baixado após confirmação explícita.
+- Para receber um pedido, aprove-o, vincule todos os itens a materiais cadastrados e use
+  **Receber**. A operação registra entradas no estoque e cria uma conta a pagar associada ao
+  fornecedor e ao pedido; informe o vencimento no recebimento.
+- Ao criar um contrato, o sistema gera todas as parcelas de recebimento. Informe o primeiro
+  vencimento; as parcelas seguintes vencem mensalmente no mesmo dia (ou no último dia do mês
+  quando esse dia não existir). Sem data informada, a primeira parcela vence no primeiro dia
+  do próximo mês. O valor é distribuído em centavos e qualquer sobra fica na última parcela.
+- O comparativo do dashboard considera o avanço físico das etapas e o valor pago em contas
+  a pagar dividido pelo orçamento aprovado mais recente (ou o valor cadastrado na obra se
+  não houver orçamento aprovado). O percentual financeiro pode passar de 100% para evidenciar
+  estouro de orçamento.
 
 ### Convites e recuperacao de senha
 

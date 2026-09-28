@@ -7,7 +7,13 @@ const contratoSchema = new mongoose.Schema({
   cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Cliente', required: true },
   orcamento: { type: mongoose.Schema.Types.ObjectId, ref: 'Orcamento' },
   valorTotal: { type: Number, required: true, min: 0.01 },
-  numeroParcelas: { type: Number, default: 1, min: 1 },
+  numeroParcelas: {
+    type: Number,
+    default: 1,
+    min: 1,
+    validate: { validator: Number.isInteger, message: 'O numero de parcelas deve ser inteiro' }
+  },
+  dataPrimeiroVencimento: Date,
   objeto: String,
   dataAssinatura: Date,
   dataInicio: Date,

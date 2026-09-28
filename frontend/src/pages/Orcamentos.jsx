@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
 import { exportarOrcamentoPdf } from '../utils/exporters.js';
 
-const itemVazio = { descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0, materialVinculado: '' };
+const itemVazio = { descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0, materialVinculado: '', etapa: '' };
 const vazio = { obra: '', cliente: '', descricao: '', itens: [{ ...itemVazio }], desconto: 0, acrescimo: 0, status: 'rascunho', validadeDias: 30 };
 
 export default function Orcamentos() {
@@ -10,6 +10,7 @@ export default function Orcamentos() {
   const [obras, setObras] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [materiais, setMateriais] = useState([]);
+  const [etapas, setEtapas] = useState([]);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
@@ -21,6 +22,13 @@ export default function Orcamentos() {
     api.get('/materiais').then((r) => setMateriais(r.data));
   };
   useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    if (!form.obra) {
+      setEtapas([]);
+      return;
+    }
+    api.get(`/obras/${form.obra}/etapas`).then((r) => setEtapas(r.data));
+  }, [form.obra]);
 
   const totalItens = form.itens.reduce((acc, it) => acc + (Number(it.quantidade) * Number(it.custoUnitario)), 0);
   const totalGeral = totalItens - Number(form.desconto || 0) + Number(form.acrescimo || 0);
@@ -29,16 +37,30 @@ export default function Orcamentos() {
   const abrirNovo = () => { setEditando(null); setForm({ ...vazio, itens: [{ ...itemVazio }] }); setModal(true); };
   const abrirEdicao = (o) => {
     setEditando(o._id);
-    setForm({ ...vazio, ...o, itens: o.itens.length ? o.itens.map((it) => ({ ...it, materialVinculado: it.materialVinculado || '' })) : [{ ...itemVazio }] });
+    setForm({
+      ...vazio,
+      ...o,
+      obra: o.obra?._id || o.obra || '',
+      cliente: o.cliente?._id || o.cliente || '',
+      itens: o.itens.length ? o.itens.map((it) => ({
+        ...it,
+        materialVinculado: it.materialVinculado?._id || it.materialVinculado || '',
+        etapa: it.etapa?._id || it.etapa || ''
+      })) : [{ ...itemVazio }]
+    });
     setModal(true);
   };
 
   const salvar = async (e) => {
     e.preventDefault();
-    const payload = { ...form, itens: form.itens.filter((i) => i.descricao && i.descricao.trim()) };
-    if (editando) await api.put(`/orcamentos/${editando}`, payload);
-    else await api.post('/orcamentos', payload);
-    setModal(false); carregar();
+    try {
+      const payload = { ...form, itens: form.itens.filter((i) => i.descricao && i.descricao.trim()) };
+      if (editando) await api.put(`/orcamentos/${editando}`, payload);
+      else await api.post('/orcamentos', payload);
+      setModal(false); carregar();
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível salvar o orçamento.');
+    }
   };
 
   const excluir = async (id) => {
@@ -49,8 +71,17 @@ export default function Orcamentos() {
   const gerarContrato = async (id) => {
     const parcelas = Number(window.prompt('Número de parcelas para gerar o contrato:', '1') || '1');
     if (!parcelas || parcelas < 1) return;
-    await api.post(`/orcamentos/${id}/gerar-contrato`, { numeroParcelas: parcelas });
-    carregar();
+    const proximoMes = new Date();
+    proximoMes.setMonth(proximoMes.getMonth() + 1, 1);
+    const dataPadrao = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, '0')}-01`;
+    const dataPrimeiroVencimento = window.prompt('Data do primeiro vencimento (AAAA-MM-DD):', dataPadrao);
+    if (dataPrimeiroVencimento === null) return;
+    try {
+      await api.post(`/orcamentos/${id}/gerar-contrato`, { numeroParcelas: parcelas, dataPrimeiroVencimento });
+      carregar();
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível gerar o contrato e suas parcelas.');
+    }
   };
 
   const setItem = (idx, campo, valor) => {
@@ -104,7 +135,7 @@ export default function Orcamentos() {
             <form onSubmit={salvar}>
               <div className="form-grid">
                 <div className="campo"><label>Obra *</label>
-                  <select required value={form.obra} onChange={(e) => setForm({ ...form, obra: e.target.value })} disabled={bloqueadoAprovado}>
+                  <select required value={form.obra} onChange={(e) => setForm({ ...form, obra: e.target.value, itens: form.itens.map((item) => ({ ...item, etapa: '' })) })} disabled={bloqueadoAprovado}>
                     <option value="">— Selecione —</option>
                     {obras.map((o) => <option key={o._id} value={o._id}>{o.nome}</option>)}
                   </select>
@@ -129,7 +160,7 @@ export default function Orcamentos() {
 
               <h3 style={{ margin: '16px 0 8px', fontSize: 14, color: 'var(--primaria-escura)' }}>Itens do orçamento</h3>
               <table>
-                <thead><tr><th>Descrição</th><th>Un.</th><th>Qtd.</th><th>Custo unit.</th><th>Material</th><th>Total</th><th></th></tr></thead>
+                <thead><tr><th>Descrição</th><th>Un.</th><th>Qtd.</th><th>Custo unit.</th><th>Material</th><th>Etapa</th><th>Total</th><th></th></tr></thead>
                 <tbody>
                   {form.itens.map((it, idx) => (
                     <tr key={idx}>
@@ -138,9 +169,15 @@ export default function Orcamentos() {
                       <td><input style={{ width: 70 }} type="number" value={it.quantidade} onChange={(e) => setItem(idx, 'quantidade', e.target.value)} disabled={bloqueadoAprovado} /></td>
                       <td><input style={{ width: 110 }} type="number" step="0.01" value={it.custoUnitario} onChange={(e) => setItem(idx, 'custoUnitario', e.target.value)} disabled={bloqueadoAprovado} /></td>
                       <td>
-                        <select value={it.materialVinculado || ''} onChange={(e) => setItem(idx, 'materialVinculado', e.target.value)} disabled={bloqueadoAprovado}>
+                        <select value={it.materialVinculado || ''} onChange={(e) => setItem(idx, 'materialVinculado', e.target.value)}>
                           <option value="">— Sem vínculo —</option>
                           {materiais.map((material) => <option key={material._id} value={material._id}>{material.nome}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select value={it.etapa || ''} onChange={(e) => setItem(idx, 'etapa', e.target.value)}>
+                          <option value="">— Sem vínculo —</option>
+                          {etapas.map((etapa) => <option key={etapa._id} value={etapa._id}>{etapa.descricao}</option>)}
                         </select>
                       </td>
                       <td>{fmtMoeda(Number(it.quantidade) * Number(it.custoUnitario))}</td>
@@ -162,8 +199,7 @@ export default function Orcamentos() {
 
               <div className="modal-acoes">
                 <button type="button" className="btn btn-linha" onClick={() => setModal(false)}>Cancelar</button>
-                {!bloqueadoAprovado && <button type="submit" className="btn btn-primario">Salvar</button>}
-                {bloqueadoAprovado && <button type="button" className="btn btn-primario" onClick={() => setModal(false)}>Fechar</button>}
+                <button type="submit" className="btn btn-primario">{bloqueadoAprovado ? 'Salvar vínculos' : 'Salvar'}</button>
               </div>
             </form>
           </div>

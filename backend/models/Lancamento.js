@@ -12,10 +12,22 @@ const lancamentoSchema = new mongoose.Schema({
   obra: { type: mongoose.Schema.Types.ObjectId, ref: 'Obra' },
   cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Cliente' },
   fornecedor: String,
+  fornecedorVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Fornecedor' },
+  pedidoCompra: { type: mongoose.Schema.Types.ObjectId, ref: 'PedidoCompra' },
+  contrato: { type: mongoose.Schema.Types.ObjectId, ref: 'Contrato' },
+  numeroParcela: { type: Number, min: 1 },
   formaPagamento: String,
   observacoes: String
 }, { timestamps: true });
 
+lancamentoSchema.index(
+  { empresa: 1, pedidoCompra: 1 },
+  { unique: true, partialFilterExpression: { pedidoCompra: { $type: 'objectId' } } }
+);
+lancamentoSchema.index(
+  { empresa: 1, contrato: 1, numeroParcela: 1 },
+  { unique: true, partialFilterExpression: { contrato: { $type: 'objectId' }, numeroParcela: { $type: 'number' } } }
+);
 lancamentoSchema.plugin(tenantPlugin);
 
 export default mongoose.model('Lancamento', lancamentoSchema);

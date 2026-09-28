@@ -6,6 +6,8 @@ const movimentoSchema = new mongoose.Schema({
   quantidade: { type: Number, required: true, min: 0.0001 },
   data: { type: Date, default: Date.now },
   obra: { type: mongoose.Schema.Types.ObjectId, ref: 'Obra' },
+  pedidoCompra: { type: mongoose.Schema.Types.ObjectId, ref: 'PedidoCompra' },
+  medicao: { type: mongoose.Schema.Types.ObjectId, ref: 'Medicao' },
   observacao: String
 }, { _id: true });
 

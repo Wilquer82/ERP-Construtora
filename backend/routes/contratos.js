@@ -1,42 +1,13 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Contrato from '../models/Contrato.js';
 import Lancamento from '../models/Lancamento.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
+import { gerarParcelasContrato } from '../services/contractInstallments.js';
 
 const router = express.Router();
 router.use(protect);
-
-const gerarParcelas = async ({ contrato, valorTotal, numeroParcelas, obra, cliente }) => {
-  if (!Number(numeroParcelas) || Number(numeroParcelas) < 1) return [];
-  const total = Number(valorTotal) || 0;
-  const parcelas = Number(numeroParcelas);
-  const base = total / parcelas;
-  const lancamentos = [];
-
-  for (let i = 0; i < parcelas; i += 1) {
-    const dataVencimento = new Date();
-    dataVencimento.setMonth(dataVencimento.getMonth() + i + 1, 1);
-    const valorParcela = i === parcelas - 1
-      ? Number((total - (base * (parcelas - 1))).toFixed(2))
-      : Number(base.toFixed(2));
-
-    const lancamento = await Lancamento.create({
-      tipo: 'receber',
-      descricao: `Parcela ${i + 1}/${parcelas} - ${contrato.numero || 'Contrato'}`,
-      categoria: 'Contrato',
-      valor: valorParcela,
-      dataVencimento,
-      status: 'pendente',
-      obra,
-      cliente,
-      formaPagamento: 'Parcelamento',
-      observacoes: `Contrato ${contrato.numero || contrato._id}`
-    });
-    lancamentos.push(lancamento);
-  }
-  return lancamentos;
-};
 
 router.get('/', async (req, res, next) => {
   try {
@@ -57,35 +28,53 @@ router.get('/:id', async (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
+  const session = await mongoose.startSession();
   try {
-    const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
-    const contrato = await Contrato.create({
-      ...payload,
-      numeroParcelas: Number(payload.numeroParcelas) || 1,
-      valorTotal: Number(payload.valorTotal) || 0
-    });
-
-    if (contrato.valorTotal > 0 && Number(payload.numeroParcelas) > 1) {
-      await gerarParcelas({
-        contrato,
-        valorTotal: contrato.valorTotal,
-        numeroParcelas: contrato.numeroParcelas,
-        obra: contrato.obra,
-        cliente: contrato.cliente
-      });
+    const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'dataPrimeiroVencimento', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
+    if (!Number.isInteger(Number(payload.numeroParcelas) || 1) || Number(payload.numeroParcelas || 1) < 1) {
+      return res.status(400).json({ error: 'Informe um numero inteiro e positivo de parcelas' });
     }
-
+    let contrato;
+    await session.withTransaction(async () => {
+      contrato = new Contrato({
+        ...payload,
+        numeroParcelas: Number(payload.numeroParcelas) || 1,
+        valorTotal: Number(payload.valorTotal) || 0
+      });
+      await contrato.save({ session });
+      await gerarParcelasContrato({ contrato, session });
+    });
     res.status(201).json(contrato);
   } catch (err) { next(err); }
+  finally { await session.endSession(); }
 });
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
+    const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'dataPrimeiroVencimento', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
+    if (Object.hasOwn(payload, 'numeroParcelas') && (!Number.isInteger(Number(payload.numeroParcelas)) || Number(payload.numeroParcelas) < 1)) {
+      return res.status(400).json({ error: 'Informe um numero inteiro e positivo de parcelas' });
+    }
+    const atual = await Contrato.findById(req.params.id);
+    if (!atual) return res.status(404).json({ error: 'Nao encontrado' });
+    const parcelasExistentes = await Lancamento.exists({ contrato: req.params.id });
+    const dataAtual = atual.dataPrimeiroVencimento ? new Date(atual.dataPrimeiroVencimento).getTime() : null;
+    const dataNova = payload.dataPrimeiroVencimento ? new Date(payload.dataPrimeiroVencimento).getTime() : null;
+    const alterouParcelamento = (
+      (Object.hasOwn(payload, 'valorTotal') && Number(payload.valorTotal) !== Number(atual.valorTotal))
+      || (Object.hasOwn(payload, 'numeroParcelas') && Number(payload.numeroParcelas) !== Number(atual.numeroParcelas))
+      || (Object.hasOwn(payload, 'dataPrimeiroVencimento') && dataNova !== dataAtual)
+      || (Object.hasOwn(payload, 'obra') && String(payload.obra) !== String(atual.obra))
+      || (Object.hasOwn(payload, 'cliente') && String(payload.cliente) !== String(atual.cliente))
+      || (Object.hasOwn(payload, 'numero') && String(payload.numero) !== String(atual.numero))
+    );
+    if (parcelasExistentes && alterouParcelamento) {
+      return res.status(409).json({ error: 'O contrato possui parcelas geradas; valor, quantidade e vencimentos nao podem ser alterados' });
+    }
     const doc = await Contrato.findByIdAndUpdate(req.params.id, {
       ...payload,
-      numeroParcelas: Number(payload.numeroParcelas) || 1,
-      valorTotal: Number(payload.valorTotal) || 0
+      ...(Object.hasOwn(payload, 'numeroParcelas') ? { numeroParcelas: Number(payload.numeroParcelas) || 1 } : {}),
+      ...(Object.hasOwn(payload, 'valorTotal') ? { valorTotal: Number(payload.valorTotal) || 0 } : {})
     }, { new: true, runValidators: true });
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
@@ -94,6 +83,9 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
+    if (await Lancamento.exists({ contrato: req.params.id })) {
+      return res.status(409).json({ error: 'Contrato com parcelas financeiras vinculadas nao pode ser excluido' });
+    }
     const doc = await Contrato.findByIdAndDelete(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json({ ok: true });

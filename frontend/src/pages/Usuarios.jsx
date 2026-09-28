@@ -8,20 +8,34 @@ export default function Usuarios() {
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
+  const [erro, setErro] = useState('');
 
-  const carregar = () => api.get('/usuarios').then((r) => setLista(r.data));
+  const carregar = async () => {
+    try {
+      const { data } = await api.get('/usuarios');
+      setLista(data);
+      setErro('');
+    } catch (error) {
+      setErro(error.response?.data?.error || 'Nao foi possivel carregar os usuarios.');
+    }
+  };
   useEffect(() => { carregar(); }, []);
 
-  const abrirNovo = () => { setEditando(null); setForm(vazio); setModal(true); };
-  const abrirEdicao = (u) => { setEditando(u._id); setForm({ nome: u.nome, email: u.email, senha: '', role: u.role, ativo: u.ativo }); setModal(true); };
+  const abrirNovo = () => { setErro(''); setEditando(null); setForm(vazio); setModal(true); };
+  const abrirEdicao = (u) => { setErro(''); setEditando(u._id); setForm({ nome: u.nome, email: u.email, senha: '', role: u.role, ativo: u.ativo }); setModal(true); };
 
   const salvar = async (e) => {
     e.preventDefault();
     const payload = { ...form };
     if (!payload.senha) delete payload.senha;
-    if (editando) await api.put(`/usuarios/${editando}`, payload);
-    else await api.post('/usuarios', payload);
-    setModal(false); carregar();
+    try {
+      if (editando) await api.put(`/usuarios/${editando}`, payload);
+      else await api.post('/usuarios', payload);
+      setModal(false);
+      await carregar();
+    } catch (error) {
+      setErro(error.response?.data?.error || 'Nao foi possivel salvar o usuario.');
+    }
   };
 
   const excluir = async (id) => {
@@ -36,6 +50,7 @@ export default function Usuarios() {
         <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo usuário</button>
       </div>
 
+      {erro && <div className="erro">{erro}</div>}
       <div className="card">
         {lista.length === 0 ? (
           <div className="vazio">Nenhum usuário cadastrado.</div>
@@ -47,6 +62,7 @@ export default function Usuarios() {
                 <th>E-mail</th>
                 <th>Perfil</th>
                 <th>Status</th>
+                <th>Senha</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -57,6 +73,7 @@ export default function Usuarios() {
                   <td>{u.email}</td>
                   <td>{u.role === 'admin' ? 'Administrador' : 'Usuário'}</td>
                   <td>{u.ativo ? 'Ativo' : 'Inativo'}</td>
+                  <td>{u.trocarSenha ? 'Troca obrigatória' : 'Atualizada'}</td>
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(u)}>Editar</button>{' '}
                     <button className="btn btn-perigo btn-mini" onClick={() => excluir(u._id)}>Excluir</button>
@@ -72,11 +89,12 @@ export default function Usuarios() {
         <div className="modal-fundo" onClick={() => setModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editando ? 'Editar usuário' : 'Novo usuário'}</h2>
+            {erro && <div className="erro">{erro}</div>}
             <form onSubmit={salvar}>
               <div className="form-grid">
                 <div className="campo"><label>Nome *</label><input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
                 <div className="campo"><label>E-mail *</label><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div className="campo"><label>Senha {editando ? '(opcional)' : '*'}</label><input type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} /></div>
+                <div className="campo"><label>Senha {editando ? '(opcional)' : '*'}</label><input type="password" required={!editando} minLength={8} autoComplete="new-password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} /><small>Use ao menos 8 caracteres, com letras e números; a senha será trocada no primeiro acesso.</small></div>
                 <div className="campo"><label>Perfil</label>
                   <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                     <option value="usuario">Usuário</option>

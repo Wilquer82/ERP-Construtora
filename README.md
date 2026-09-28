@@ -32,7 +32,9 @@ npm run seed           # cria admin + dados de exemplo (opcional, mas recomendad
 npm run dev            # ou: npm start
 ```
 
-**Usuário padrão (após o seed):** `admin@sienge.local` / `admin123`
+O seed cria o administrador usando `ADMIN_EMAIL` e `ADMIN_PASSWORD` do `.env`.
+Configure uma senha forte antes de executa-lo; uma conta criada pelo seed precisa
+trocar a senha no primeiro login.
 
 ### 2) Frontend (porta 5173)
 
@@ -91,6 +93,36 @@ Todas as rotas (exceto `/auth/login` e `/auth/registro`) exigem header `Authoriz
 No servico do backend no Render, configure `CORS_ORIGIN` com a URL exata do frontend
 (por exemplo, `https://erp-construtora-1.onrender.com`). O backend tambem inclui esse
 dominio na lista padrao; valores adicionais em `CORS_ORIGIN` sao aceitos.
+
+Configure `JWT_SECRET` no ambiente do backend com um valor aleatorio de pelo menos 32
+caracteres. Para rotaciona-lo, substitua o valor no Render e faca redeploy. Isso invalida
+os JWTs assinados com a chave antiga; o script de limpeza tambem incrementa a versao de
+todos os usuarios para revogar sessoes. Uma chave pode ser gerada com
+`node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"`;
+configure o resultado diretamente no ambiente do servico e nao o salve no repositorio.
+
+O cadastro em `POST /api/auth/registro` requer um administrador autenticado. O fluxo
+recomendado para provisionar contas e `POST /api/usuarios`; contas criadas ou com senha
+redefinida por um administrador precisam trocar a senha no primeiro login. Senhas devem
+ter ao menos 8 caracteres, uma letra e um numero, e nao podem ser comuns.
+
+Para remover o usuario legado e contas com email invalido, o script e inicialmente
+somente de simulacao. Execute a partir de `backend` e confirme a exclusao:
+
+```bash
+node scripts/cleanup-users.js
+node scripts/cleanup-users.js --apply
+```
+
+Para redefinir a senha do administrador por CLI (nao existe rota HTTP para isso), defina
+`MONGO_URI`, `ADMIN_EMAIL` e `ADMIN_NEW_PASSWORD` no ambiente e execute:
+
+```bash
+node scripts/reset-admin.js
+```
+
+O script exige uma senha forte, redefine a conta admin indicada por `ADMIN_EMAIL`, marca
+a troca obrigatoria no proximo login e incrementa `tokenVersion`.
 
 ```bash
 cd frontend && npm run build   # gera dist/

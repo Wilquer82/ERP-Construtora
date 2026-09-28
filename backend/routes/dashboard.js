@@ -12,7 +12,7 @@ router.use(protect);
 
 const formatarMes = (date) => new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(date).replace('.', '');
 
-router.get('/fluxo-caixa', async (req, res) => {
+router.get('/fluxo-caixa', async (req, res, next) => {
   try {
     const inicio = new Date();
     inicio.setDate(1);
@@ -47,12 +47,12 @@ router.get('/fluxo-caixa', async (req, res) => {
       aReceber: mapa[mes.chave]?.aReceber || 0
     })));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return next(err);
   }
 });
 
 // GET /api/dashboard/resumo -> indicadores para a tela inicial
-router.get('/resumo', async (req, res) => {
+router.get('/resumo', async (req, res, next) => {
   try {
     const [totalObras, totalClientes, totalContratos, aPagar, aReceber, materiaisAbaixo, materiaisBaixo, obrasPorStatus, obrasRecentes] = await Promise.all([
       Obra.countDocuments(),
@@ -102,7 +102,7 @@ router.get('/resumo', async (req, res) => {
         percentualConclusao: Number(obra.percentualConclusao) || 0
       }))
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
 export default router;

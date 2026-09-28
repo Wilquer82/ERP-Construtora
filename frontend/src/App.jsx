@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
@@ -12,11 +12,17 @@ import Materiais from './pages/Materiais.jsx';
 import Fornecedores from './pages/Fornecedores.jsx';
 import Compras from './pages/Compras.jsx';
 import Usuarios from './pages/Usuarios.jsx';
+import TrocarSenha from './pages/TrocarSenha.jsx';
 
 function RotaProtegida({ children }) {
   const { user, carregandoSessao } = useAuth();
+  const location = useLocation();
   if (carregandoSessao) return <div className="vazio">Validando sessao...</div>;
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.trocarSenha && location.pathname !== '/trocar-senha') {
+    return <Navigate to="/trocar-senha" replace />;
+  }
+  return children;
 }
 
 function RotaAdmin({ children }) {
@@ -30,6 +36,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/trocar-senha" element={<RotaProtegida><TrocarSenha /></RotaProtegida>} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
         <Route path="clientes" element={<Clientes />} />

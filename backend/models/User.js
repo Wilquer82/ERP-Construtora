@@ -1,20 +1,33 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { isValidEmail, passwordError } from '../utils/security.js';
 
 const userSchema = new mongoose.Schema({
   nome: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  senha: { type: String, required: true, select: false },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    validate: { validator: isValidEmail, message: 'Email invalido' }
+  },
+  senha: {
+    type: String,
+    required: true,
+    select: false,
+    validate: { validator: (value) => !passwordError(value), message: 'Senha fraca' }
+  },
   role: { type: String, enum: ['admin', 'usuario'], default: 'usuario' },
   ativo: { type: Boolean, default: true },
+  trocarSenha: { type: Boolean, default: false },
   tokenVersion: { type: Number, default: 0 }
 }, { timestamps: true });
 
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('senha')) return next();
+userSchema.pre('save', async function () {
+  if (!this.isModified('senha')) return;
   const salt = await bcrypt.genSalt(10);
   this.senha = await bcrypt.hash(this.senha, salt);
-  next();
 });
 
 userSchema.methods.compararSenha = function (senhaDigitada) {

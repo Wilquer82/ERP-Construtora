@@ -7,7 +7,7 @@ import { protect } from '../middleware/auth.js';
 const router = express.Router();
 router.use(protect);
 
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const { obra, etapa, quantidade, data, observacao } = req.body;
     const quantidadeNumerica = Number(quantidade);
@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
       });
       throw err;
     }
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
 export default router;

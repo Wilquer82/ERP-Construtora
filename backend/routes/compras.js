@@ -18,22 +18,22 @@ const normalizeItens = (itens = []) => (itens || []).map((item) => {
   };
 });
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const docs = await PedidoCompra.find().populate('fornecedor', 'nome razaoSocial').populate('obra', 'nome').sort({ dataPedido: -1 });
     res.json(docs);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const doc = await PedidoCompra.findById(req.params.id).populate('fornecedor', 'nome razaoSocial').populate('obra', 'nome');
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post('/', adminOnly, async (req, res) => {
+router.post('/', adminOnly, async (req, res, next) => {
   try {
     const payload = pick(req.body, ['numero', 'fornecedor', 'obra', 'status', 'dataPedido', 'dataEntregaPrevista', 'observacoes', 'itens']);
     const itens = normalizeItens(payload.itens);
@@ -42,10 +42,10 @@ router.post('/', adminOnly, async (req, res) => {
     await doc.populate('fornecedor', 'nome razaoSocial');
     await doc.populate('obra', 'nome');
     res.status(201).json(doc);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put('/:id', adminOnly, async (req, res) => {
+router.put('/:id', adminOnly, async (req, res, next) => {
   try {
     const payload = pick(req.body, ['numero', 'fornecedor', 'obra', 'status', 'dataPedido', 'dataEntregaPrevista', 'observacoes', 'itens']);
     if (Array.isArray(payload.itens)) payload.itens = normalizeItens(payload.itens);
@@ -56,15 +56,15 @@ router.put('/:id', adminOnly, async (req, res) => {
     doc.valorTotal = (doc.itens || []).reduce((acc, item) => acc + (Number(item.quantidade || 0) * Number(item.custoUnitario || 0)), 0);
     await doc.save();
     res.json(doc);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete('/:id', adminOnly, async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     const doc = await PedidoCompra.findByIdAndDelete(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
 export default router;

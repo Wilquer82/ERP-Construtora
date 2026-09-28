@@ -3,22 +3,37 @@ import User from '../models/User.js';
 
 // Protege rotas: exige token JWT no header Authorization: Bearer <token>
 export async function protect(req, res, next) {
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('_id nome email role ativo tokenVersion');
-      if (!user || !user.ativo || user.tokenVersion !== (decoded.tokenVersion || 0)) {
-        return res.status(401).json({ error: 'Token invalido ou usuario inativo' });
-      }
-      req.user = { id: user._id, nome: user.nome, email: user.email, role: user.role };
-      next();
-    } catch (err) {
-      return res.status(401).json({ error: 'Token invalido ou expirado' });
-    }
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Nao autorizado, sem token' });
   }
-  if (!token) return res.status(401).json({ error: 'Nao autorizado, sem token' });
+
+  let decoded;
+  try {
+    decoded = jwt.verify(authorization.slice(7), process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: 'Token invalido ou expirado' });
+  }
+  if (!decoded || typeof decoded !== 'object' || typeof decoded.id !== 'string') {
+    return res.status(401).json({ error: 'Token invalido ou expirado' });
+  }
+
+  const user = await User.findById(decoded.id).select('_id nome email role ativo trocarSenha tokenVersion');
+  if (!user || !user.ativo || user.tokenVersion !== (decoded.tokenVersion || 0)) {
+    return res.status(401).json({ error: 'Token invalido ou usuario inativo' });
+  }
+  req.user = {
+    id: user._id,
+    nome: user.nome,
+    email: user.email,
+    role: user.role,
+    trocarSenha: user.trocarSenha
+  };
+
+  if (user.trocarSenha && !['/me', '/logout', '/trocar-senha'].includes(req.path)) {
+    return res.status(403).json({ error: 'Troca de senha obrigatoria', trocarSenha: true });
+  }
+  return next();
 }
 
 // Opcional: restringir por papel (admin)

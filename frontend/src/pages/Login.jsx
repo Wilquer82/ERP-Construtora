@@ -16,8 +16,8 @@ export default function Login() {
     e.preventDefault();
     setErro(''); setCarregando(true);
     try {
-      await login(email, senha);
-      navigate('/');
+      const usuario = await login(email, senha);
+      navigate(usuario?.trocarSenha ? '/trocar-senha' : '/');
     } catch (err) {
       setErro(err.response?.data?.error || 'Erro ao entrar. Verifique o backend.');
     } finally {

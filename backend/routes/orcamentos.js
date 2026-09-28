@@ -39,32 +39,32 @@ const gerarParcelasContrato = async ({ contrato, valorTotal, numeroParcelas, obr
   return criadas;
 };
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const docs = await Orcamento.find()
       .populate('obra', 'nome')
       .populate('cliente', 'nome')
       .sort({ createdAt: -1 });
     res.json(docs);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const doc = await Orcamento.findById(req.params.id).populate('obra cliente');
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const doc = await Orcamento.create(pick(req.body, ['obra', 'cliente', 'descricao', 'itens', 'desconto', 'acrescimo', 'status', 'dataCriacao', 'validadeDias']));
     res.status(201).json(doc);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post('/:id/gerar-contrato', async (req, res) => {
+router.post('/:id/gerar-contrato', async (req, res, next) => {
   try {
     const orcamento = await Orcamento.findById(req.params.id).populate('obra cliente');
     if (!orcamento) return res.status(404).json({ error: 'Orcamento nao encontrado' });
@@ -96,11 +96,11 @@ router.post('/:id/gerar-contrato', async (req, res) => {
 
     res.status(201).json(contrato);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return next(err);
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const atual = await Orcamento.findById(req.params.id);
     if (!atual) return res.status(404).json({ error: 'Nao encontrado' });
@@ -113,15 +113,15 @@ router.put('/:id', async (req, res) => {
     const doc = await Orcamento.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete('/:id', adminOnly, async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     const doc = await Orcamento.findByIdAndDelete(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
 export default router;

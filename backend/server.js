@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
+import errorHandler from './middleware/errorHandler.js';
 
 import authRoutes from './routes/auth.js';
 import clienteRoutes from './routes/clientes.js';
@@ -35,7 +36,21 @@ const configuredOrigins = (process.env.CORS_ORIGIN || '')
 	.map((origin) => origin.trim())
 	.filter(Boolean);
 const origins = [...new Set([...defaultOrigins, ...configuredOrigins])];
-app.use(helmet());
+app.use(helmet({
+	contentSecurityPolicy: {
+		directives: {
+			defaultSrc: ["'self'", 'https://erp-construtora-1.onrender.com'],
+			scriptSrc: ["'self'"],
+			styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+			fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+			imgSrc: ["'self'", 'data:'],
+			connectSrc: ["'self'", 'https://erp-construtora-1.onrender.com'],
+			frameAncestors: ["'none'"]
+		}
+	},
+	frameguard: { action: 'deny' },
+	referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}));
 app.use(cors({ origin: origins }));
 app.use(express.json({ limit: '100kb' }));
 
@@ -65,11 +80,12 @@ app.use('/api/dashboard', dashboardRoutes);
 app.get('/', (req, res) => res.json({ ok: true, api: 'Sienge-MERN essencial', versao: '1.0.0' }));
 
 const PORT = process.env.PORT || 5000;
-app.use((err, req, res, next) => {
-	console.error(err);
-	if (res.headersSent) return next(err);
-	res.status(err.statusCode || 500).json({ error: 'Erro interno do servidor' });
+app.use((req, res, next) => {
+	const err = new Error('Nao encontrado');
+	err.status = 404;
+	next(err);
 });
+app.use(errorHandler);
 
 async function iniciar() {
 	await connectDB();

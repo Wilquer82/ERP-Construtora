@@ -38,25 +38,25 @@ const gerarParcelas = async ({ contrato, valorTotal, numeroParcelas, obra, clien
   return lancamentos;
 };
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const docs = await Contrato.find()
       .populate('obra', 'nome')
       .populate('cliente', 'nome')
       .sort({ createdAt: -1 });
     res.json(docs);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const doc = await Contrato.findById(req.params.id).populate('obra cliente');
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
     const contrato = await Contrato.create({
@@ -76,10 +76,10 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(contrato);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const payload = pick(req.body, ['numero', 'obra', 'cliente', 'valorTotal', 'numeroParcelas', 'objeto', 'dataAssinatura', 'dataInicio', 'dataFim', 'status', 'observacoes', 'orcamento']);
     const doc = await Contrato.findByIdAndUpdate(req.params.id, {
@@ -89,15 +89,15 @@ router.put('/:id', async (req, res) => {
     }, { new: true, runValidators: true });
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json(doc);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete('/:id', adminOnly, async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     const doc = await Contrato.findByIdAndDelete(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { next(err); }
 });
 
 export default router;

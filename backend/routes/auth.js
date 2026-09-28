@@ -1,10 +1,35 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { createHash } from 'node:crypto';
+import rateLimit from 'express-rate-limit';
 import User from '../models/User.js';
-import { adminOnly, protect } from '../middleware/auth.js';
+import PasswordReset from '../models/PasswordReset.js';
+import { protect } from '../middleware/auth.js';
 import { isValidEmail, passwordError } from '../utils/security.js';
+import { sendEmail } from '../services/email.js';
+import { consumirTokenDeSenha, criarTokenDeSenha } from '../services/passwordTokens.js';
 
 const router = express.Router();
+const genericForgotResponse = {
+  message: 'Se o email estiver cadastrado, voce recebera instrucoes para redefinir a senha.'
+};
+const forgotIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(200).json(genericForgotResponse)
+});
+const resetRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => createHash('sha256')
+    .update(typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : 'invalid-email')
+    .digest('hex'),
+  handler: (req, res) => res.status(200).json(genericForgotResponse)
+});
 
 const gerarToken = (user) => jwt.sign(
   {
@@ -17,38 +42,6 @@ const gerarToken = (user) => jwt.sign(
   process.env.JWT_SECRET,
   { expiresIn: process.env.JWT_EXPIRES || '7d' }
 );
-
-// POST /api/auth/registro
-router.post('/registro', protect, adminOnly, async (req, res, next) => {
-  try {
-    const { nome, email, senha } = req.body || {};
-    if (!nome || !email || !senha) return res.status(400).json({ error: 'Preencha nome, email e senha' });
-    const emailNormalizado = String(email).trim().toLowerCase();
-    if (!isValidEmail(emailNormalizado)) return res.status(400).json({ error: 'Email invalido' });
-    const erroSenha = passwordError(senha);
-    if (erroSenha) return res.status(400).json({ error: erroSenha });
-    const existe = await User.findOne({ email: emailNormalizado });
-    if (existe) return res.status(400).json({ error: 'Email ja cadastrado' });
-    const user = await User.create({
-      nome: String(nome).trim(),
-      email: emailNormalizado,
-      senha,
-      role: 'usuario',
-      trocarSenha: true
-    });
-    return res.status(201).json({
-      user: {
-        id: user._id,
-        nome: user.nome,
-        email: user.email,
-        role: user.role,
-        trocarSenha: user.trocarSenha
-      }
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
 
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
@@ -72,6 +65,56 @@ router.post('/login', async (req, res, next) => {
         trocarSenha: user.trocarSenha
       }
     });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/esqueci-senha', forgotIpLimiter, resetRequestLimiter, async (req, res, next) => {
+  try {
+    const email = typeof req.body?.email === 'string'
+      ? req.body.email.trim().toLowerCase()
+      : '';
+    if (!isValidEmail(email)) return res.status(200).json(genericForgotResponse);
+
+    const user = await User.findOne({ email, ativo: true });
+    if (user) {
+      const token = await criarTokenDeSenha(user._id, new Date(Date.now() + 15 * 60 * 1000));
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const link = `${frontendUrl.replace(/\/$/, '')}/reset-senha?token=${encodeURIComponent(token)}`;
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Redefinicao de senha',
+          text: `Use este link para redefinir sua senha (valido por 15 minutos):\n${link}`
+        });
+      } catch (emailError) {
+        console.error('Falha ao enviar email de redefinicao:', emailError);
+      }
+    }
+    return res.status(200).json(genericForgotResponse);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/reset-senha', async (req, res, next) => {
+  try {
+    const { token, novaSenha } = req.body || {};
+    const erroSenha = passwordError(novaSenha);
+    if (erroSenha) return res.status(400).json({ error: erroSenha });
+
+    const reset = await consumirTokenDeSenha(token);
+    if (!reset) return res.status(400).json({ error: 'Link invalido, expirado ou ja utilizado' });
+    const user = await User.findById(reset.userId).select('+senha');
+    if (!user || !user.ativo) return res.status(400).json({ error: 'Link invalido, expirado ou ja utilizado' });
+
+    user.senha = novaSenha;
+    user.tokenVersion += 1;
+    await user.save();
+    await PasswordReset.updateMany({ userId: user._id, usado: false }, { $set: { usado: true } });
+
+    return res.json({ message: 'Senha redefinida. Voce ja pode entrar com a nova senha.' });
   } catch (err) {
     return next(err);
   }

@@ -30,6 +30,13 @@ if (!adminExiste) {
     trocarSenha: true
   });
   console.log(`Admin criado: ${adminEmail}`);
+} else if (adminExiste.role !== 'admin') {
+  adminExiste.role = 'admin';
+  adminExiste.senha = adminSenha;
+  adminExiste.trocarSenha = true;
+  adminExiste.tokenVersion += 1;
+  await adminExiste.save();
+  console.log(`Usuario promovido a administrador: ${adminEmail}`);
 } else {
   console.log('ℹ️ Admin ja existe');
 }

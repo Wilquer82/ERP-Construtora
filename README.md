@@ -6,7 +6,7 @@ Implementação **MERN** (MongoDB, Express, React, Node.js) dos módulos essenci
 
 | Módulo | Descrição |
 |---|---|
-| 🔐 Auth | Login/registro com JWT, senha criptografada (bcrypt), papéis admin/usuário |
+| 🔐 Auth | Login, convites e recuperacao de senha com JWT, bcrypt e papeis admin/usuario |
 | 🏗️ Obras | CRUD completo, status, % de conclusão, orçamento, vinculação a cliente |
 | 👥 Clientes | CRUD com CPF/CNPJ, contato e endereço |
 | 📋 Orçamentos | Itens com quantidade × custo unitário, desconto/acréscimo, total automático |
@@ -71,9 +71,10 @@ sienge-mern/
 
 ## API (REST, prefixo `/api`)
 
-Todas as rotas (exceto `/auth/login` e `/auth/registro`) exigem header `Authorization: Bearer <token>`.
+Todas as rotas de dados exigem header `Authorization: Bearer <token>`.
 
-- `POST /auth/login`, `POST /auth/registro`, `GET /auth/me`
+- `POST /auth/login`, `GET /auth/me`
+- `POST /auth/esqueci-senha`, `POST /auth/reset-senha`
 - `GET|POST|PUT|DELETE /clientes`, `/obras`, `/orcamentos`, `/contratos`, `/materiais`
 - `GET|POST|PUT|DELETE /financeiro` + `POST /financeiro/:id/baixar`
 - `POST /materiais/:id/movimento` (entrada/saída de estoque)
@@ -101,10 +102,10 @@ todos os usuarios para revogar sessoes. Uma chave pode ser gerada com
 `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"`;
 configure o resultado diretamente no ambiente do servico e nao o salve no repositorio.
 
-O cadastro em `POST /api/auth/registro` requer um administrador autenticado. O fluxo
-recomendado para provisionar contas e `POST /api/usuarios`; contas criadas ou com senha
-redefinida por um administrador precisam trocar a senha no primeiro login. Senhas devem
-ter ao menos 8 caracteres, uma letra e um numero, e nao podem ser comuns.
+O cadastro e convite de contas e feito por administradores em `POST /api/usuarios`.
+Contas convidadas precisam definir uma senha pelo link recebido e troca-la novamente no
+primeiro login. Senhas devem ter ao menos 8 caracteres, uma letra e um numero, e nao
+podem ser comuns.
 
 Para remover o usuario legado e contas com email invalido, o script e inicialmente
 somente de simulacao. Execute a partir de `backend` e confirme a exclusao:
@@ -123,6 +124,26 @@ node scripts/reset-admin.js
 
 O script exige uma senha forte, redefine a conta admin indicada por `ADMIN_EMAIL`, marca
 a troca obrigatoria no proximo login e incrementa `tokenVersion`.
+
+Para trocar o email legado `admin@sienge.local` pelo email real do administrador,
+configure `MONGO_URI` e `ADMIN_EMAIL` e execute:
+
+```bash
+npm run migrate:super-admin-email
+```
+
+Isso atualiza a conta legada, exige a troca de senha e revoga suas sessoes.
+
+### Convites e recuperacao de senha
+
+Em desenvolvimento, configure `EMAIL_PROVIDER=console`; os links serao impressos no
+terminal. Em producao, configure `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `EMAIL_FROM`
+(remetente verificado no Resend) e `FRONTEND_URL`. As rotas publicas
+`POST /api/auth/esqueci-senha` e `POST /api/auth/reset-senha` permitem recuperar o acesso;
+o pedido tem limite de tres por hora por email e responde de forma generica.
+Links de recuperacao expiram em 15 minutos e convites em 7 dias. Administradores enviam
+ou reenviam convites pela tela de usuarios. O banco guarda somente o hash SHA-256 dos
+tokens, que sao de uso unico.
 
 ```bash
 cd frontend && npm run build   # gera dist/

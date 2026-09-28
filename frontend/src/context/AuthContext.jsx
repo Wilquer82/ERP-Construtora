@@ -56,9 +56,14 @@ export function AuthProvider({ children }) {
     setUser(data.user || null);
   };
 
-  const registro = async (dados) => {
-    const { data } = await api.post('/auth/registro', dados);
-    return data.user;
+  const solicitarRedefinicao = async (email) => {
+    const { data } = await api.post('/auth/esqueci-senha', { email });
+    return data;
+  };
+
+  const redefinirSenha = async (token, novaSenha) => {
+    const { data } = await api.post('/auth/reset-senha', { token, novaSenha });
+    return data;
   };
 
   const logout = async () => {
@@ -72,7 +77,15 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, carregandoSessao, login, registro, trocarSenha, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      carregandoSessao,
+      login,
+      trocarSenha,
+      solicitarRedefinicao,
+      redefinirSenha,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

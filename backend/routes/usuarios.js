@@ -1,11 +1,31 @@
 import express from 'express';
 import User from '../models/User.js';
+import PasswordReset from '../models/PasswordReset.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
-import { isValidEmail, passwordError } from '../utils/security.js';
+import { isValidEmail } from '../utils/security.js';
+import { sendEmail } from '../services/email.js';
+import { criarTokenDeSenha } from '../services/passwordTokens.js';
+import { randomBytes } from 'node:crypto';
 
 const router = express.Router();
 router.use(protect);
+
+async function enviarConvite(user) {
+  const invitationToken = await criarTokenDeSenha(user._id, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const invitationLink = `${frontendUrl.replace(/\/$/, '')}/reset-senha?token=${encodeURIComponent(invitationToken)}`;
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Convite para acessar o Constru-ERP',
+      text: `O administrador convidou voce para acessar o Constru-ERP. Defina sua senha neste link (valido por 7 dias):\n${invitationLink}`
+    });
+  } catch (err) {
+    await PasswordReset.deleteMany({ userId: user._id, usado: false });
+    throw err;
+  }
+}
 
 router.get('/', adminOnly, async (req, res, next) => {
   try {
@@ -16,31 +36,57 @@ router.get('/', adminOnly, async (req, res, next) => {
 
 router.post('/', adminOnly, async (req, res, next) => {
   try {
-    const { nome, email, senha, role, ativo } = req.body || {};
-    if (!nome || !email || !senha) return res.status(400).json({ error: 'Preencha nome, email e senha' });
+    const { nome, email, role, ativo } = req.body || {};
+    if (!nome || !email) return res.status(400).json({ error: 'Preencha nome e email' });
     const emailNormalizado = String(email).trim().toLowerCase();
     if (!isValidEmail(emailNormalizado)) return res.status(400).json({ error: 'Email invalido' });
-    const erroSenha = passwordError(senha);
-    if (erroSenha) return res.status(400).json({ error: erroSenha });
+    if (ativo === false) return res.status(400).json({ error: 'Ative o usuario para enviar o convite por email' });
     const exists = await User.findOne({ email: emailNormalizado });
     if (exists) return res.status(400).json({ error: 'Email ja cadastrado' });
     const user = await User.create({
       nome: String(nome).trim(),
       email: emailNormalizado,
-      senha,
+      senha: `A1${randomBytes(32).toString('hex')}`,
       role: ['admin', 'usuario'].includes(role) ? role : 'usuario',
       ativo: ativo !== false,
       trocarSenha: true
     });
+    try {
+      await enviarConvite(user);
+    } catch (err) {
+      await User.findByIdAndDelete(user._id);
+      throw err;
+    }
     res.status(201).json({
       id: user._id,
       nome: user.nome,
       email: user.email,
       role: user.role,
       ativo: user.ativo,
-      trocarSenha: user.trocarSenha
+      trocarSenha: user.trocarSenha,
+      conviteEnviado: true
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('Falha ao criar convite de usuario:', err);
+    next(err);
+  }
+});
+
+router.post('/:id/convite', adminOnly, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (!user.ativo) return res.status(400).json({ error: 'Ative o usuario antes de enviar o convite' });
+
+    user.trocarSenha = true;
+    user.tokenVersion += 1;
+    await user.save();
+    await enviarConvite(user);
+    return res.json({ message: 'Convite enviado por email' });
+  } catch (err) {
+    console.error('Falha ao reenviar convite de usuario:', err);
+    return next(err);
+  }
 });
 
 router.put('/:id', adminOnly, async (req, res, next) => {
@@ -56,14 +102,6 @@ router.put('/:id', adminOnly, async (req, res, next) => {
     }
     if (payload.role && ['admin', 'usuario'].includes(payload.role)) user.role = payload.role;
     if (typeof payload.ativo === 'boolean') user.ativo = payload.ativo;
-
-    if (req.body?.senha) {
-      const erroSenha = passwordError(req.body.senha);
-      if (erroSenha) return res.status(400).json({ error: erroSenha });
-      user.senha = req.body.senha;
-      user.trocarSenha = true;
-      user.tokenVersion += 1;
-    }
 
     await user.save();
     res.json({

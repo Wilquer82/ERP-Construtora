@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api.js';
 
-const vazio = { nome: '', email: '', senha: '', role: 'usuario', ativo: true };
+const vazio = { nome: '', email: '', role: 'usuario', ativo: true };
 
 export default function Usuarios() {
   const [lista, setLista] = useState([]);
@@ -9,6 +9,7 @@ export default function Usuarios() {
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
   const [erro, setErro] = useState('');
+  const [mensagem, setMensagem] = useState('');
 
   const carregar = async () => {
     try {
@@ -22,19 +23,28 @@ export default function Usuarios() {
   useEffect(() => { carregar(); }, []);
 
   const abrirNovo = () => { setErro(''); setEditando(null); setForm(vazio); setModal(true); };
-  const abrirEdicao = (u) => { setErro(''); setEditando(u._id); setForm({ nome: u.nome, email: u.email, senha: '', role: u.role, ativo: u.ativo }); setModal(true); };
+  const abrirEdicao = (u) => { setErro(''); setEditando(u._id); setForm({ nome: u.nome, email: u.email, role: u.role, ativo: u.ativo }); setModal(true); };
 
   const salvar = async (e) => {
     e.preventDefault();
-    const payload = { ...form };
-    if (!payload.senha) delete payload.senha;
     try {
-      if (editando) await api.put(`/usuarios/${editando}`, payload);
-      else await api.post('/usuarios', payload);
+      if (editando) await api.put(`/usuarios/${editando}`, form);
+      else await api.post('/usuarios', form);
       setModal(false);
       await carregar();
     } catch (error) {
       setErro(error.response?.data?.error || 'Nao foi possivel salvar o usuario.');
+    }
+  };
+
+  const reenviarConvite = async (id) => {
+    setErro('');
+    setMensagem('');
+    try {
+      const { data } = await api.post(`/usuarios/${id}/convite`);
+      setMensagem(data.message);
+    } catch (error) {
+      setErro(error.response?.data?.error || 'Nao foi possivel enviar o convite.');
     }
   };
 
@@ -51,6 +61,7 @@ export default function Usuarios() {
       </div>
 
       {erro && <div className="erro">{erro}</div>}
+      {mensagem && <div className="sucesso">{mensagem}</div>}
       <div className="card">
         {lista.length === 0 ? (
           <div className="vazio">Nenhum usuário cadastrado.</div>
@@ -76,6 +87,7 @@ export default function Usuarios() {
                   <td>{u.trocarSenha ? 'Troca obrigatória' : 'Atualizada'}</td>
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(u)}>Editar</button>{' '}
+                    {u.trocarSenha && <button className="btn btn-linha btn-mini" onClick={() => reenviarConvite(u._id)}>Reenviar convite</button>}{' '}
                     <button className="btn btn-perigo btn-mini" onClick={() => excluir(u._id)}>Excluir</button>
                   </td>
                 </tr>
@@ -94,7 +106,7 @@ export default function Usuarios() {
               <div className="form-grid">
                 <div className="campo"><label>Nome *</label><input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
                 <div className="campo"><label>E-mail *</label><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div className="campo"><label>Senha {editando ? '(opcional)' : '*'}</label><input type="password" required={!editando} minLength={8} autoComplete="new-password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} /><small>Use ao menos 8 caracteres, com letras e números; a senha será trocada no primeiro acesso.</small></div>
+                {!editando && <p className="sub">Um convite para definir a senha será enviado ao email informado.</p>}
                 <div className="campo"><label>Perfil</label>
                   <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                     <option value="usuario">Usuário</option>

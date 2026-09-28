@@ -30,7 +30,7 @@ export async function protect(req, res, next) {
     trocarSenha: user.trocarSenha
   };
 
-  if (user.trocarSenha && !['/me', '/logout', '/trocar-senha'].includes(req.path)) {
+  if (user.trocarSenha && !['/me', '/logout', '/trocar-senha', '/esqueci-senha', '/reset-senha'].includes(req.path)) {
     return res.status(403).json({ error: 'Troca de senha obrigatoria', trocarSenha: true });
   }
   return next();

@@ -13,6 +13,8 @@ import Fornecedores from './pages/Fornecedores.jsx';
 import Compras from './pages/Compras.jsx';
 import Usuarios from './pages/Usuarios.jsx';
 import TrocarSenha from './pages/TrocarSenha.jsx';
+import EsqueciSenha from './pages/EsqueciSenha.jsx';
+import ResetSenha from './pages/ResetSenha.jsx';
 
 function RotaProtegida({ children }) {
   const { user, carregandoSessao } = useAuth();
@@ -36,6 +38,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+      <Route path="/reset-senha" element={<ResetSenha />} />
       <Route path="/trocar-senha" element={<RotaProtegida><TrocarSenha /></RotaProtegida>} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />

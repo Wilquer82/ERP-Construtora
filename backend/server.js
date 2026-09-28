@@ -24,6 +24,17 @@ dotenv.config();
 if (!process.env.MONGO_URI || !process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 	throw new Error('MONGO_URI e JWT_SECRET com pelo menos 32 caracteres sao obrigatorios');
 }
+if (
+	process.env.NODE_ENV === 'production'
+	&& (
+		!process.env.FRONTEND_URL
+		|| (process.env.EMAIL_PROVIDER || 'resend').toLowerCase() !== 'resend'
+		|| !process.env.RESEND_API_KEY
+		|| !process.env.EMAIL_FROM
+	)
+) {
+	throw new Error('FRONTEND_URL, EMAIL_PROVIDER=resend, RESEND_API_KEY e EMAIL_FROM sao obrigatorios em producao');
+}
 
 const app = express();
 const defaultOrigins = [
@@ -41,7 +52,7 @@ app.use(helmet({
 		directives: {
 			defaultSrc: ["'self'", 'https://erp-construtora-1.onrender.com'],
 			scriptSrc: ["'self'"],
-			styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+			styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
 			fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
 			imgSrc: ["'self'", 'data:'],
 			connectSrc: ["'self'", 'https://erp-construtora-1.onrender.com'],
@@ -59,6 +70,7 @@ const authLimiter = rateLimit({
 	limit: 20,
 	standardHeaders: 'draft-7',
 	legacyHeaders: false,
+	skip: (req) => req.path === '/esqueci-senha',
 	message: { error: 'Muitas tentativas. Tente novamente mais tarde.' }
 });
 

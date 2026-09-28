@@ -109,6 +109,7 @@ textarea { resize: vertical; }
 .barra-progresso > div { height: 100%; border-radius: inherit; background: var(--primaria); transition: width .3s ease; }
 .vazio { padding: 48px 20px; color: var(--texto-terciario); text-align: center; }
 .erro { margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(255, 107, 107, .25); border-radius: 7px; color: #ff9a9a; background: rgba(255, 107, 107, .09); font-size: 12px; }
+.sucesso { margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(33, 199, 168, .3); border-radius: 7px; color: #8ee3d2; background: rgba(33, 199, 168, .1); font-size: 12px; }
 .icone { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.8; }
  .login-wrap { display: grid; min-height: 100vh; place-items: center; padding: 24px; background: radial-gradient(circle at 15% 15%, rgba(33, 199, 168, .12), transparent 27%), radial-gradient(circle at 85% 80%, rgba(244, 185, 66, .08), transparent 24%), var(--fundo); }
  .login-card { width: min(420px, 100%); padding: 38px; border: 1px solid var(--borda); border-radius: 16px; background: rgba(17, 25, 35, .9); box-shadow: var(--sombra-lg); }

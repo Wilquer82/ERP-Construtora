@@ -21,6 +21,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import medicaoRoutes from './routes/medicoes.js';
 import empresaRoutes from './routes/empresas.js';
 import contaBancariaRoutes from './routes/contasBancarias.js';
+import arquivoRoutes from './routes/arquivos.js';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -96,6 +97,7 @@ app.use('/api/fornecedores', fornecedorRoutes);
 app.use('/api/compras', compraRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/arquivos', arquivoRoutes);
 
 app.get('/healthz', (req, res) => {
 	if (mongoose.connection.readyState !== 1) {

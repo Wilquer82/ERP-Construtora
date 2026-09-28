@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../api.js';
 
-const vazio = { nome: '', email: '', role: 'usuario', ativo: true };
+const vazio = { nome: '', email: '', role: 'usuario', ativo: true, obras: [] };
 
 export default function Usuarios() {
   const [lista, setLista] = useState([]);
+  const [obras, setObras] = useState([]);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
@@ -20,26 +21,51 @@ export default function Usuarios() {
       setErro(error.response?.data?.error || 'Nao foi possivel carregar os usuarios.');
     }
   };
-  useEffect(() => { carregar(); }, []);
 
-  const abrirNovo = () => { setErro(''); setEditando(null); setForm(vazio); setModal(true); };
-  const abrirEdicao = (u) => { setErro(''); setEditando(u._id); setForm({ nome: u.nome, email: u.email, role: u.role, ativo: u.ativo }); setModal(true); };
+  const carregarObras = async () => {
+    try {
+      const { data } = await api.get('/obras');
+      setObras(data);
+    } catch (error) {
+      console.error('Nao foi possivel carregar obras:', error);
+    }
+  };
+
+  useEffect(() => { carregar(); carregarObras(); }, []);
+
+  const abrirNovo = () => { setErro(''); setMensagem(''); setEditando(null); setForm(vazio); setModal(true); };
+  const abrirEdicao = (u) => {
+    setErro(''); setMensagem('');
+    setEditando(u._id);
+    setForm({
+      nome: u.nome, email: u.email, role: u.role, ativo: u.ativo,
+      obras: u.obras ? u.obras.map((o) => String(o)) : []
+    });
+    setModal(true);
+  };
 
   const salvar = async (e) => {
     e.preventDefault();
     try {
-      if (editando) await api.put(`/usuarios/${editando}`, form);
-      else await api.post('/usuarios', form);
+      const payload = {
+        nome: form.nome,
+        email: form.email,
+        role: form.role,
+        ativo: form.ativo,
+        obras: form.role === 'admin' ? [] : form.obras
+      };
+      if (editando) await api.put(`/usuarios/${editando}`, payload);
+      else await api.post('/usuarios', payload);
       setModal(false);
       await carregar();
+      setMensagem('Usuario salvo com sucesso.');
     } catch (error) {
       setErro(error.response?.data?.error || 'Nao foi possivel salvar o usuario.');
     }
   };
 
   const reenviarConvite = async (id) => {
-    setErro('');
-    setMensagem('');
+    setErro(''); setMensagem('');
     try {
       const { data } = await api.post(`/usuarios/${id}/convite`);
       setMensagem(data.message);
@@ -49,8 +75,9 @@ export default function Usuarios() {
   };
 
   const excluir = async (id) => {
-    if (!window.confirm('Excluir este usuário?')) return;
-    await api.delete(`/usuarios/${id}`); carregar();
+    if (!window.confirm('Excluir este usuario?')) return;
+    await api.delete(`/usuarios/${id}`);
+    carregar();
   };
 
   return (
@@ -74,6 +101,7 @@ export default function Usuarios() {
                 <th>Perfil</th>
                 <th>Status</th>
                 <th>Senha</th>
+                <th>Obras atribuídas</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -85,6 +113,13 @@ export default function Usuarios() {
                   <td>{u.role === 'admin' ? 'Administrador' : 'Usuário'}</td>
                   <td>{u.ativo ? 'Ativo' : 'Inativo'}</td>
                   <td>{u.trocarSenha ? 'Troca obrigatória' : 'Atualizada'}</td>
+                  <td>
+                    {u.role === 'admin'
+                      ? '— Todas —'
+                      : (u.obras && u.obras.length > 0
+                        ? u.obras.map((o) => obras.find((ob) => String(ob._id) === String(o))?.nome || String(o)).join(', ')
+                        : <span style={{ color: '#b91c1c' }}>Nenhuma</span>)}
+                  </td>
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(u)}>Editar</button>{' '}
                     {u.trocarSenha && <button className="btn btn-linha btn-mini" onClick={() => reenviarConvite(u._id)}>Reenviar convite</button>}{' '}
@@ -107,21 +142,39 @@ export default function Usuarios() {
                 <div className="campo"><label>Nome *</label><input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
                 <div className="campo"><label>E-mail *</label><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
                 {!editando && <p className="sub">Um convite para definir a senha será enviado ao email informado.</p>}
-                <div className="campo"><label>Perfil</label>
-                  <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <div className="campo"><label>Perfil *</label>
+                  <select required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, obras: e.target.value === 'admin' ? [] : form.obras })}>
                     <option value="usuario">Usuário</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
-                <div className="campo"><label>Status</label>
-                  <select value={String(form.ativo)} onChange={(e) => setForm({ ...form, ativo: e.target.value === 'true' })}>
+                <div className="campo"><label>Status *</label>
+                  <select required value={String(form.ativo)} onChange={(e) => setForm({ ...form, ativo: e.target.value === 'true' })}>
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>
                   </select>
                 </div>
+                {form.role === 'usuario' && (
+                  <div className="campo" style={{ gridColumn: '1 / -1' }}>
+                    <label>Obras atribuídas (se vazio, o usuário não vê nenhuma obra)</label>
+                    <select
+                      multiple
+                      value={form.obras}
+                      onChange={(e) => {
+                        const selecionadas = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+                        setForm({ ...form, obras: selecionadas });
+                      }}
+                      style={{ minHeight: 120, width: '100%' }}
+                    >
+                      {obras.map((o) => (
+                        <option key={o._id} value={o._id}>{o.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="modal-acoes">
-                <button type="button" className="btn btn-linha" onClick={() => setModal(false)}>Cancelar</button>
+                <button type="button" className="btn btn-linha" onClick={() => { setForm(vazio); setModal(false); }}>Cancelar</button>
                 <button type="submit" className="btn btn-primario">Salvar</button>
               </div>
             </form>

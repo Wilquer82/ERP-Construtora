@@ -74,7 +74,7 @@ export default function Layout() {
       <main className="conteudo">
         <div className="workspace-meta">
           <span className="workspace-label">PAINEL OPERACIONAL</span>
-          <span className="workspace-status"><i /> Sistema online</span>
+          <span className="workspace-status"><i /> {navigator.onLine ? 'Sistema online' : 'Modo offline'}</span>
         </div>
         <Outlet />
       </main>

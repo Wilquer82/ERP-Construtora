@@ -68,3 +68,11 @@ export function superAdminOnly(req, res, next) {
   if (req.user?.superAdmin) return next();
   return res.status(403).json({ error: 'Acesso restrito ao super-administrador' });
 }
+
+// Aliases para clareza de import em novas rotas
+export const auth = protect;
+
+export function escopoEmpresa(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Nao autorizado, sem token' });
+  next();
+}

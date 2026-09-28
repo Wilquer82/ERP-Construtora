@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
 import { exportarRelatorioObraPdf } from '../utils/exporters.js';
+import { isOnline, saveMedicaoOffline, getUnsyncedMedicoes, syncMedicoesOffline, onOnlineChange } from '../utils/offlineDB.js';
 
 const vazio = { codigo: '', nome: '', descricao: '', endereco: '', cidade: '', uf: '', cliente: '', status: 'planejamento', valorOrcamento: 0, dataInicio: '', dataPrevisaoFim: '', responsavel: '' };
 
@@ -20,6 +21,8 @@ export default function Obras() {
   const [sugestoesEstoque, setSugestoesEstoque] = useState([]);
   const [baixasConcluidas, setBaixasConcluidas] = useState([]);
   const [erroEtapas, setErroEtapas] = useState('');
+  const [online, setOnline] = useState(isOnline());
+  const [medicoesOffline, setMedicoesOffline] = useState(0);
   const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
     const hoje = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -34,6 +37,31 @@ export default function Obras() {
     api.get('/clientes').then((r) => setClientes(r.data));
   };
   useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const updateOnline = (status) => {
+      setOnline(status);
+      if (status) {
+        carregarMedicoesOffline();
+        sincronizar();
+      }
+    };
+    onOnlineChange(updateOnline);
+    carregarMedicoesOffline();
+  }, []);
+
+  const carregarMedicoesOffline = async () => {
+    const pendentes = await getUnsyncedMedicoes();
+    setMedicoesOffline(pendentes.length);
+  };
+
+  const sincronizar = async () => {
+    if (medicoesOffline === 0) return;
+    const result = await syncMedicoesOffline(api);
+    if (result.synced > 0) {
+      carregarMedicoesOffline();
+      carregar();
+    }
+  };
 
   const abrirNovo = () => { setEditando(null); setForm(vazio); setModal(true); };
   const abrirEdicao = (o) => {
@@ -52,20 +80,25 @@ export default function Obras() {
     setEtapaForm({ descricao: '', unidade: 'un', quantidadeTotal: '', precoUnitario: '' });
     setMedicaoForm({ etapa: '', quantidade: '', data: new Date().toISOString().slice(0, 10), observacao: '' });
     setMedicaoAtual(null);
-    setSugestoesEstoque([]);
-    setBaixasConcluidas([]);
-    setErroEtapas('');
-    try {
-      const [resEtapas, resMedicoes] = await Promise.all([
-        api.get(`/obras/${obra._id}/etapas`),
-        api.get('/medicoes', { params: { obra: obra._id } })
-      ]);
-      setEtapas(resEtapas.data);
-      setMedicoes(resMedicoes.data);
-    } catch (error) {
-      setErroEtapas(error.response?.data?.error || 'Não foi possível carregar etapas e medições.');
-    }
-  };
+     setSugestoesEstoque([]);
+     setBaixasConcluidas([]);
+     setErroEtapas('');
+     try {
+       const [resEtapas, resMedicoes] = await Promise.all([
+         api.get(`/obras/${obra._id}/etapas`),
+         api.get('/medicoes', { params: { obra: obra._id } })
+       ]);
+       setEtapas(resEtapas.data);
+       setMedicoes(resMedicoes.data);
+     } catch (error) {
+       const offlineMedicoes = await getUnsyncedMedicoes().catch(() => []);
+       const offlineFiltradas = offlineMedicoes.filter((m) => String(m.obra) === String(obra._id));
+       if (offlineFiltradas.length > 0) {
+         setMedicoes(offlineFiltradas);
+       }
+       setErroEtapas(error.response?.data?.error || 'Nao foi possivel carregar etapas e medicoes.');
+     }
+   };
 
   const salvarEtapa = async (e) => {
     e.preventDefault();
@@ -86,6 +119,27 @@ export default function Obras() {
   const salvarMedicao = async (e) => {
     e.preventDefault();
     setErroEtapas('');
+
+    if (!online) {
+      try {
+        await saveMedicaoOffline({
+          obra: String(obraEtapas._id),
+          etapa: String(medicaoForm.etapa),
+          quantidade: Number(medicaoForm.quantidade),
+          data: medicaoForm.data,
+          responsavel: '',
+          observacao: medicaoForm.observacao
+        });
+        setMedicaoForm((atual) => ({ ...atual, quantidade: '', observacao: '' }));
+        setMedicoesOffline((prev) => prev + 1);
+        setSugestoesEstoque([]);
+        setBaixasConcluidas([]);
+      } catch (error) {
+        setErroEtapas('Nao foi possivel salvar a medição offline.');
+      }
+      return;
+    }
+
     try {
       const resposta = await api.post('/medicoes', {
         obra: obraEtapas._id,
@@ -203,6 +257,17 @@ export default function Obras() {
           <div className="modal-fundo" onClick={() => setObraEtapas(null)}>
             <div className="modal modal-xl" onClick={(e) => e.stopPropagation()}>
               <h2>Etapas e medições — {obraEtapas.nome}</h2>
+               {!online && (
+                 <div style={{ background: '#fef3c3', border: '1px solid #fcd34d', padding: 8, borderRadius: 4, marginBottom: 12 }}>
+                   <strong>Modo offline</strong> — medições são salvas localmente e sincronizadas quando você voltar online.
+                   {medicoesOffline > 0 && <span style={{ float: 'right' }}> {medicoesOffline} pendente(s) de sincronização</span>}
+                 </div>
+               )}
+               {online && medicoesOffline > 0 && (
+                 <div style={{ background: '#dcfce8', border: '1px solid #4ade80', padding: 8, borderRadius: 4, marginBottom: 12 }}>
+                   <strong>Online</strong> — {medicoesOffline} medição(ões) offline pendentes. <a href="#" onClick={(e) => { e.preventDefault(); sincronizar(); }}>Sincronizar agora</a>
+                 </div>
+               )}
               {erroEtapas && <div role="alert" style={{ color: '#b91c1c', marginBottom: 12 }}>{erroEtapas}</div>}
               <div className="card">
                 <h3>Etapas da obra</h3>

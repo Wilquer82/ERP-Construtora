@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const itemOrcamentoSchema = new mongoose.Schema({
   descricao: { type: String, required: true },
@@ -6,7 +7,6 @@ const itemOrcamentoSchema = new mongoose.Schema({
   quantidade: { type: Number, default: 1, min: 0.0001 },
   custoUnitario: { type: Number, default: 0, min: 0 },
   materialVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Material', default: null },
-  // total = quantidade * custoUnitario (calculado no frontend/backend)
 }, { _id: true });
 
 const orcamentoSchema = new mongoose.Schema({
@@ -21,7 +21,6 @@ const orcamentoSchema = new mongoose.Schema({
   validadeDias: { type: Number, default: 30, min: 1 }
 }, { timestamps: true });
 
-// Campo virtual: total do orcamento
 orcamentoSchema.virtual('total').get(function () {
   const somaItens = this.itens.reduce((acc, it) => acc + (it.quantidade * it.custoUnitario), 0);
   return somaItens - this.desconto + this.acrescimo;
@@ -33,5 +32,6 @@ orcamentoSchema.pre('validate', function (next) {
 });
 
 orcamentoSchema.set('toJSON', { virtuals: true });
+orcamentoSchema.plugin(tenantPlugin);
 
 export default mongoose.model('Orcamento', orcamentoSchema);

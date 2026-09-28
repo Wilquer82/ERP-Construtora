@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const passwordResetSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -9,5 +10,6 @@ const passwordResetSchema = new mongoose.Schema({
 
 passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 passwordResetSchema.index({ tokenHash: 1 }, { unique: true });
+passwordResetSchema.plugin(tenantPlugin);
 
 export default mongoose.model('PasswordReset', passwordResetSchema);

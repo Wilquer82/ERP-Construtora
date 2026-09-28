@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import errorHandler from './middleware/errorHandler.js';
+import { isValidEmail } from './utils/security.js';
 
 import authRoutes from './routes/auth.js';
 import clienteRoutes from './routes/clientes.js';
@@ -18,6 +19,8 @@ import compraRoutes from './routes/compras.js';
 import usuarioRoutes from './routes/usuarios.js';
 import dashboardRoutes from './routes/dashboard.js';
 import medicaoRoutes from './routes/medicoes.js';
+import empresaRoutes from './routes/empresas.js';
+import mongoose from 'mongoose';
 
 dotenv.config();
 
@@ -27,13 +30,15 @@ if (!process.env.MONGO_URI || !process.env.JWT_SECRET || process.env.JWT_SECRET.
 if (
 	process.env.NODE_ENV === 'production'
 	&& (
+		!isValidEmail((process.env.SUPER_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').trim())
+		||
 		!process.env.FRONTEND_URL
 		|| (process.env.EMAIL_PROVIDER || 'resend').toLowerCase() !== 'resend'
 		|| !process.env.RESEND_API_KEY
 		|| !process.env.EMAIL_FROM
 	)
 ) {
-	throw new Error('FRONTEND_URL, EMAIL_PROVIDER=resend, RESEND_API_KEY e EMAIL_FROM sao obrigatorios em producao');
+	throw new Error('SUPER_ADMIN_EMAIL (ou ADMIN_EMAIL), FRONTEND_URL, EMAIL_PROVIDER=resend, RESEND_API_KEY e EMAIL_FROM sao obrigatorios em producao');
 }
 
 const app = express();
@@ -77,6 +82,7 @@ const authLimiter = rateLimit({
 // Rotas publicas e protegidas
 app.use('/auth', authLimiter, authRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/empresas', empresaRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/obras', obraRoutes);
 app.use('/api/medicoes', medicaoRoutes);
@@ -88,6 +94,13 @@ app.use('/api/fornecedores', fornecedorRoutes);
 app.use('/api/compras', compraRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+app.get('/healthz', (req, res) => {
+	if (mongoose.connection.readyState !== 1) {
+		return res.status(503).json({ ok: false });
+	}
+	return res.json({ ok: true });
+});
 
 app.get('/', (req, res) => res.json({ ok: true, api: 'Sienge-MERN essencial', versao: '1.0.0' }));
 

@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const obraSchema = new mongoose.Schema({
-  codigo: { type: String, unique: true, sparse: true },
+  codigo: { type: String },
   nome: { type: String, required: true },
   descricao: String,
   endereco: String,
@@ -19,5 +20,8 @@ const obraSchema = new mongoose.Schema({
   dataConclusao: Date,
   responsavel: String
 }, { timestamps: true });
+
+obraSchema.index({ empresa: 1, codigo: 1 }, { unique: true, partialFilterExpression: { codigo: { $type: 'string' } } });
+obraSchema.plugin(tenantPlugin);
 
 export default mongoose.model('Obra', obraSchema);

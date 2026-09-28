@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { isValidEmail, passwordError } from '../utils/security.js';
+import tenantPlugin from './plugins/tenant.js';
 
 const userSchema = new mongoose.Schema({
   nome: { type: String, required: true },
@@ -20,9 +21,12 @@ const userSchema = new mongoose.Schema({
   },
   role: { type: String, enum: ['admin', 'usuario'], default: 'usuario' },
   ativo: { type: Boolean, default: true },
+  superAdmin: { type: Boolean, default: false },
   trocarSenha: { type: Boolean, default: false },
   tokenVersion: { type: Number, default: 0 }
 }, { timestamps: true });
+
+userSchema.plugin(tenantPlugin);
 
 userSchema.pre('save', async function () {
   if (!this.isModified('senha')) return;

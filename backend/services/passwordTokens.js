@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import PasswordReset from '../models/PasswordReset.js';
+import { currentTenant } from '../middleware/tenantContext.js';
 
 export function criarToken() {
   const token = randomBytes(32).toString('hex');
@@ -7,10 +8,17 @@ export function criarToken() {
   return { token, tokenHash };
 }
 
-export async function criarTokenDeSenha(userId, expiresAt) {
+export async function criarTokenDeSenha(userId, expiresAt, empresaId, actorId) {
   const { token, tokenHash } = criarToken();
   await PasswordReset.deleteMany({ userId, usado: false });
-  await PasswordReset.create({ userId, tokenHash, expiresAt });
+  const context = currentTenant();
+  await PasswordReset.create({
+    userId,
+    tokenHash,
+    expiresAt,
+    empresa: empresaId || context?.empresaId,
+    criadoPor: actorId || context?.userId
+  });
   return token;
 }
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const movimentoSchema = new mongoose.Schema({
   tipo: { type: String, enum: ['entrada', 'saida'], required: true },
@@ -9,9 +10,9 @@ const movimentoSchema = new mongoose.Schema({
 }, { _id: true });
 
 const materialSchema = new mongoose.Schema({
-  codigo: { type: String, unique: true, sparse: true },
+  codigo: { type: String },
   nome: { type: String, required: true },
-  categoria: String, // ex: ferragem, concreto, acabamento
+  categoria: String,
   unidade: { type: String, default: 'und' },
   estoqueAtual: { type: Number, default: 0, min: 0 },
   estoqueMinimo: { type: Number, default: 0, min: 0 },
@@ -19,5 +20,8 @@ const materialSchema = new mongoose.Schema({
   fornecedor: String,
   movimentos: [movimentoSchema]
 }, { timestamps: true });
+
+materialSchema.index({ empresa: 1, codigo: 1 }, { unique: true, partialFilterExpression: { codigo: { $type: 'string' } } });
+materialSchema.plugin(tenantPlugin);
 
 export default mongoose.model('Material', materialSchema);

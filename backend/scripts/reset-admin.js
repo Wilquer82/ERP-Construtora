@@ -29,6 +29,7 @@ try {
   admin.senha = ADMIN_NEW_PASSWORD;
   admin.trocarSenha = true;
   admin.tokenVersion += 1;
+  admin.alteradoPor = admin._id;
   await admin.save();
   console.log('Senha do administrador redefinida; todas as sessoes anteriores foram revogadas.');
 } catch (err) {

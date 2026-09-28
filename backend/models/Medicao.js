@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const medicaoSchema = new mongoose.Schema({
   obra: { type: mongoose.Schema.Types.ObjectId, ref: 'Obra', required: true, index: true },
@@ -8,5 +9,7 @@ const medicaoSchema = new mongoose.Schema({
   responsavel: { type: String, required: true, trim: true },
   observacao: { type: String, trim: true, maxlength: 1000 }
 }, { timestamps: true });
+
+medicaoSchema.plugin(tenantPlugin);
 
 export default mongoose.model('Medicao', medicaoSchema);

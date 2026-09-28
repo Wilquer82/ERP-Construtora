@@ -79,7 +79,7 @@ router.post('/esqueci-senha', forgotIpLimiter, resetRequestLimiter, async (req, 
 
     const user = await User.findOne({ email, ativo: true });
     if (user) {
-      const token = await criarTokenDeSenha(user._id, new Date(Date.now() + 15 * 60 * 1000));
+      const token = await criarTokenDeSenha(user._id, new Date(Date.now() + 15 * 60 * 1000), user.empresa, user._id);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const link = `${frontendUrl.replace(/\/$/, '')}/reset-senha?token=${encodeURIComponent(token)}`;
       try {
@@ -111,8 +111,12 @@ router.post('/reset-senha', async (req, res, next) => {
 
     user.senha = novaSenha;
     user.tokenVersion += 1;
+    user.alteradoPor = user._id;
     await user.save();
-    await PasswordReset.updateMany({ userId: user._id, usado: false }, { $set: { usado: true } });
+    await PasswordReset.updateMany(
+      { userId: user._id, usado: false },
+      { $set: { usado: true, alteradoPor: user._id } }
+    );
 
     return res.json({ message: 'Senha redefinida. Voce ja pode entrar com a nova senha.' });
   } catch (err) {

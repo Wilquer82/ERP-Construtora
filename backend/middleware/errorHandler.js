@@ -7,6 +7,7 @@ export default function errorHandler(err, req, res, next) {
     || err?.name === 'ValidationError'
     || err?.code === 11000
     || err?.type === 'entity.parse.failed'
+    || err?.status === 400
   ) {
     return res.status(400).json({ error: 'Requisição inválida' });
   }

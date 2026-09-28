@@ -134,6 +134,30 @@ npm run migrate:super-admin-email
 
 Isso atualiza a conta legada, exige a troca de senha e revoga suas sessoes.
 
+### Multi-tenant
+
+Configure `SUPER_ADMIN_EMAIL` com o email real do super-admin (ou use `ADMIN_EMAIL` como
+fallback). Para uma base existente cujo admin ainda usa `admin@sienge.local`, execute a
+migracao de email com `ADMIN_EMAIL` apontando para o endereco real antes do backfill. Em
+seguida, execute o backfill **antes do deploy que exige empresas nos documentos**:
+
+```bash
+cd backend
+npm run migrate:super-admin-email
+npm run backfill:tenants
+npm run seed
+```
+
+A migracao de email so e necessaria para uma base ainda no endereco legado; ela exige
+troca de senha e revoga sessoes antigas. Em uma instalacao nova, configure `ADMIN_EMAIL`
+e `ADMIN_PASSWORD` e execute o seed sem a migracao de email. O backfill cria/usa a
+empresa `Demo`, atribui a ela documentos ainda sem empresa,
+preenche os campos de auditoria ausentes e troca indices globais por indices unicos
+por empresa. Faça backup do MongoDB antes de executar. Todas as consultas de negocio
+sao limitadas automaticamente a empresa autenticada; o super-admin configurado pode
+administrar empresas e ignorar esse escopo. `POST /api/empresas` cria uma empresa trial,
+convida seu administrador e popula dados demonstrativos automaticamente.
+
 ### Convites e recuperacao de senha
 
 Em desenvolvimento, configure `EMAIL_PROVIDER=console`; os links serao impressos no
@@ -150,6 +174,16 @@ cd frontend && npm run build   # gera dist/
 # sirva dist/ a partir do backend (express.static) ou hospede na Vercel/Netlify
 # backend: Render, Railway, Fly.io ou VM própria; MongoDB no Atlas
 ```
+
+Na Static Site do Render, cadastre uma regra de rewrite `/*` para `/index.html` para
+que atualizar uma rota interna do SPA, como `/dashboard`, nao retorne 404. O arquivo
+`frontend/public/_redirects` serve hospedagens que suportam esse formato, mas regras do
+Render devem ser configuradas no Dashboard. Configure tambem o health check do backend
+para `/healthz`. Para evitar cold starts durante demonstracoes e vendas, use uma
+instancia web paga no Render; health checks nao substituem uma instancia que nao suspende.
+
+O formulario de login intercepta o submit com `event.preventDefault()` antes de chamar
+a API, impedindo o reload/navegacao nativa do formulario.
 
 ---
 Feito para estudo e ponto de partida. Substitua `JWT_SECRET` e o usuário admin antes de colocar em produção.

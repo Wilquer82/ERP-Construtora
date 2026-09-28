@@ -1,31 +1,13 @@
 import express from 'express';
 import User from '../models/User.js';
-import PasswordReset from '../models/PasswordReset.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
 import { isValidEmail } from '../utils/security.js';
-import { sendEmail } from '../services/email.js';
-import { criarTokenDeSenha } from '../services/passwordTokens.js';
+import { sendInvitation } from '../services/invitations.js';
 import { randomBytes } from 'node:crypto';
 
 const router = express.Router();
 router.use(protect);
-
-async function enviarConvite(user) {
-  const invitationToken = await criarTokenDeSenha(user._id, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const invitationLink = `${frontendUrl.replace(/\/$/, '')}/reset-senha?token=${encodeURIComponent(invitationToken)}`;
-  try {
-    await sendEmail({
-      to: user.email,
-      subject: 'Convite para acessar o Constru-ERP',
-      text: `O administrador convidou voce para acessar o Constru-ERP. Defina sua senha neste link (valido por 7 dias):\n${invitationLink}`
-    });
-  } catch (err) {
-    await PasswordReset.deleteMany({ userId: user._id, usado: false });
-    throw err;
-  }
-}
 
 router.get('/', adminOnly, async (req, res, next) => {
   try {
@@ -52,7 +34,7 @@ router.post('/', adminOnly, async (req, res, next) => {
       trocarSenha: true
     });
     try {
-      await enviarConvite(user);
+      await sendInvitation(user);
     } catch (err) {
       await User.findByIdAndDelete(user._id);
       throw err;
@@ -76,12 +58,15 @@ router.post('/:id/convite', adminOnly, async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (user.superAdmin && !req.user.superAdmin) {
+      return res.status(403).json({ error: 'Somente o super-administrador pode alterar esta conta' });
+    }
     if (!user.ativo) return res.status(400).json({ error: 'Ative o usuario antes de enviar o convite' });
 
+    await sendInvitation(user);
     user.trocarSenha = true;
     user.tokenVersion += 1;
     await user.save();
-    await enviarConvite(user);
     return res.json({ message: 'Convite enviado por email' });
   } catch (err) {
     console.error('Falha ao reenviar convite de usuario:', err);
@@ -93,6 +78,9 @@ router.put('/:id', adminOnly, async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (user.superAdmin && !req.user.superAdmin) {
+      return res.status(403).json({ error: 'Somente o super-administrador pode alterar esta conta' });
+    }
 
     const payload = pick(req.body || {}, ['nome', 'email', 'role', 'ativo']);
     if (payload.nome) user.nome = String(payload.nome).trim();
@@ -118,8 +106,12 @@ router.put('/:id', adminOnly, async (req, res, next) => {
 router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     if (req.user.id === req.params.id) return res.status(400).json({ error: 'Nao e possivel excluir o proprio usuario' });
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario nao encontrado' });
+    if (user.superAdmin && !req.user.superAdmin) {
+      return res.status(403).json({ error: 'Somente o super-administrador pode excluir esta conta' });
+    }
+    await user.deleteOne();
     res.json({ ok: true });
   } catch (err) { next(err); }
 });

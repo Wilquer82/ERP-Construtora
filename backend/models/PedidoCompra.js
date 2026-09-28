@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import tenantPlugin from './plugins/tenant.js';
 
 const itemPedidoSchema = new mongoose.Schema({
   material: { type: String, default: '' },
@@ -10,7 +11,7 @@ const itemPedidoSchema = new mongoose.Schema({
 }, { _id: true });
 
 const pedidoCompraSchema = new mongoose.Schema({
-  numero: { type: String, required: true, trim: true, unique: true },
+  numero: { type: String, required: true, trim: true },
   fornecedor: { type: mongoose.Schema.Types.ObjectId, ref: 'Fornecedor', required: true },
   obra: { type: mongoose.Schema.Types.ObjectId, ref: 'Obra', default: null },
   status: { type: String, enum: ['rascunho', 'aprovado', 'em_aberto', 'recebido', 'cancelado'], default: 'rascunho' },
@@ -20,6 +21,9 @@ const pedidoCompraSchema = new mongoose.Schema({
   itens: [itemPedidoSchema],
   valorTotal: { type: Number, default: 0, min: 0 }
 }, { timestamps: true });
+
+pedidoCompraSchema.index({ empresa: 1, numero: 1 }, { unique: true });
+pedidoCompraSchema.plugin(tenantPlugin);
 
 pedidoCompraSchema.pre('save', function calcularTotal(next) {
   this.valorTotal = (this.itens || []).reduce((acc, item) => {

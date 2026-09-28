@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Empresa from '../models/Empresa.js';
 import { isValidEmail } from '../utils/security.js';
 
 dotenv.config();
@@ -13,6 +14,9 @@ if (!process.env.MONGO_URI || !targetEmail || !isValidEmail(targetEmail)) {
 
 try {
   await mongoose.connect(process.env.MONGO_URI);
+  await Empresa.createIndexes();
+  let demo = await Empresa.findOne({ slug: 'demo' });
+  if (!demo) demo = await Empresa.create({ nome: 'Demo', slug: 'demo', plano: 'trial' });
   const existingAdmin = await User.findOne({ email: legacyEmail, role: 'admin' });
   if (!existingAdmin) {
     const alreadyMigrated = await User.findOne({ email: targetEmail, role: 'admin' });
@@ -26,9 +30,15 @@ try {
     if (emailInUse) throw new Error('ADMIN_EMAIL ja pertence a outra conta; nenhuma alteracao foi feita');
 
     existingAdmin.email = targetEmail;
+    if (!existingAdmin.empresa) existingAdmin.empresa = demo._id;
+    existingAdmin.superAdmin = true;
     existingAdmin.trocarSenha = true;
     existingAdmin.tokenVersion += 1;
+    existingAdmin.alteradoPor = existingAdmin._id;
     await existingAdmin.save();
+    if (!demo.criadoPor) demo.criadoPor = existingAdmin._id;
+    demo.alteradoPor = existingAdmin._id;
+    await demo.save();
     console.log(`Administrador migrado para ${targetEmail}; todas as sessoes antigas foram revogadas.`);
   }
 } catch (err) {

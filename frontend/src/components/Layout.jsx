@@ -11,6 +11,7 @@ const menu = [
   { to: '/materiais', icone: 'materiais', texto: 'Materiais / Estoque' },
   { to: '/fornecedores', icone: 'clientes', texto: 'Fornecedores' },
   { to: '/compras', icone: 'orcamento', texto: 'Compras / Pedidos' },
+  { to: '/rh', icone: 'rh', texto: 'RH', fim: true },
   { to: '/usuarios', icone: 'clientes', texto: 'Usuários e permissões' },
 ];
 
@@ -23,6 +24,7 @@ function Icone({ nome }) {
     contrato: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" /></>,
     financeiro: <><path d="M20 7V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" /><path d="M4 7h16v10H4z" /><path d="M16 12h.01" /></>,
     materiais: <><path d="M21 8.2v7.6a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 15.8V8.2a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4a2 2 0 0 1 1 1.73Z" /><path d="M3 8.2 12 13.4l9-5.2" /><path d="M12 13.4V21" /></>,
+    rh: <><path d="M12 12c2.7 0 8 1.3 8 4v2H4v-2c0-2.7 5.3-4 8-4Z" /><circle cx="12" cy="8" r="3" /></>,
     sair: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></>,
   };
 

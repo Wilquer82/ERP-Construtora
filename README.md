@@ -137,9 +137,10 @@ Isso atualiza a conta legada, exige a troca de senha e revoga suas sessoes.
 ### Multi-tenant
 
 Configure `SUPER_ADMIN_EMAIL` com o email real do super-admin (ou use `ADMIN_EMAIL` como
-fallback). Para uma base existente cujo admin ainda usa `admin@sienge.local`, execute a
-migracao de email com `ADMIN_EMAIL` apontando para o endereco real antes do backfill. Em
-seguida, execute o backfill **antes do deploy que exige empresas nos documentos**:
+fallback); mantenha esses valores iguais ao `ADMIN_EMAIL` da conta super-admin. Para uma
+base existente cujo admin ainda usa `admin@sienge.local`, faca backup, configure as
+variaveis apontando para o MongoDB de producao em ambiente seguro e execute a migracao de
+email antes do backfill. Execute ambos **antes do deploy que exige empresas nos documentos**:
 
 ```bash
 cd backend
@@ -150,8 +151,8 @@ npm run seed
 
 A migracao de email so e necessaria para uma base ainda no endereco legado; ela exige
 troca de senha e revoga sessoes antigas. Em uma instalacao nova, configure `ADMIN_EMAIL`
-e `ADMIN_PASSWORD` e execute o seed sem a migracao de email. O backfill cria/usa a
-empresa `Demo`, atribui a ela documentos ainda sem empresa,
+e `ADMIN_PASSWORD` e execute somente `npm run seed`; a empresa `Demo` e seus dados sao
+criados no mesmo tenant. O backfill cria/usa a empresa `Demo`, atribui a ela documentos ainda sem empresa,
 preenche os campos de auditoria ausentes e troca indices globais por indices unicos
 por empresa. Faça backup do MongoDB antes de executar. Todas as consultas de negocio
 sao limitadas automaticamente a empresa autenticada; o super-admin configurado pode

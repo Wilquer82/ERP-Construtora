@@ -2,6 +2,17 @@ import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import Empresa from './models/Empresa.js';
 import User from './models/User.js';
+import Cliente from './models/Cliente.js';
+import Contrato from './models/Contrato.js';
+import Etapa from './models/Etapa.js';
+import Fornecedor from './models/Fornecedor.js';
+import Lancamento from './models/Lancamento.js';
+import Material from './models/Material.js';
+import Medicao from './models/Medicao.js';
+import Obra from './models/Obra.js';
+import Orcamento from './models/Orcamento.js';
+import PedidoCompra from './models/PedidoCompra.js';
+import PasswordReset from './models/PasswordReset.js';
 import { runWithTenant } from './middleware/tenantContext.js';
 import { seedDemoCompany } from './services/demoCompany.js';
 import { isValidEmail, passwordError } from './utils/security.js';
@@ -17,7 +28,22 @@ if (!adminEmail || !isValidEmail(adminEmail)) {
 const erroSenha = passwordError(adminSenha);
 if (erroSenha) throw new Error(`ADMIN_PASSWORD invalida: ${erroSenha}`);
 
-await Empresa.createIndexes();
+const models = [
+  Empresa,
+  User,
+  Cliente,
+  Contrato,
+  Etapa,
+  Fornecedor,
+  Lancamento,
+  Material,
+  Medicao,
+  Obra,
+  Orcamento,
+  PedidoCompra,
+  PasswordReset
+];
+await Promise.all(models.map((Model) => Model.createIndexes()));
 let demo = await Empresa.findOne({ slug: 'demo' });
 if (!demo) {
   demo = await Empresa.create({ nome: 'Demo', slug: 'demo', plano: 'trial' });

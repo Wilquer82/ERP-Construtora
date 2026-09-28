@@ -20,7 +20,7 @@ export default function Login() {
       const usuario = await login(email, senha);
       navigate(usuario?.trocarSenha ? '/trocar-senha' : '/');
     } catch (err) {
-      setErro(err.response?.data?.error || 'Erro ao entrar. Verifique o backend.');
+      setErro(err.response?.data?.error || err.message || 'Erro ao entrar. Verifique o backend.');
     } finally {
       setCarregando(false);
     }

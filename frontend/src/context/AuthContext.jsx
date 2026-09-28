@@ -45,6 +45,9 @@ export function AuthProvider({ children }) {
 
   const login = async (email, senha) => {
     const { data } = await api.post('/auth/login', { email, senha });
+    if (!data || !data.token) {
+      throw new Error('Resposta invalida do servidor. Verifique se o backend esta acessivel e VITE_API_URL esta configurado.');
+    }
     salvarSessao(data);
     setUser(data.user || null);
     return data.user;

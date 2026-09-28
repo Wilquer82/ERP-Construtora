@@ -27,6 +27,9 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    if (import.meta.env.DEV) {
+      console.error('[API Error]', err.config?.url, err.response?.status, err.response?.statusText, err.message);
+    }
     return Promise.reject(err);
   }
 );

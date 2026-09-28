@@ -13,6 +13,8 @@ import Obra from '../models/Obra.js';
 import Orcamento from '../models/Orcamento.js';
 import PedidoCompra from '../models/PedidoCompra.js';
 import PasswordReset from '../models/PasswordReset.js';
+import ContaBancaria from '../models/ContaBancaria.js';
+import MovimentoBancario from '../models/MovimentoBancario.js';
 import { isValidEmail } from '../utils/security.js';
 
 dotenv.config();
@@ -35,7 +37,9 @@ const tenantModels = [
   Obra,
   Orcamento,
   PedidoCompra,
-  PasswordReset
+  PasswordReset,
+  ContaBancaria,
+  MovimentoBancario
 ];
 const oldUniqueIndexes = new Map([
   [Cliente, 'documento_1'],

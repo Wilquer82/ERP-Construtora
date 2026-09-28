@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api.js';
+import { exportarMateriaisCsv, exportarMateriaisExcel } from '../utils/exporters.js';
 
 const vazio = { codigo: '', nome: '', categoria: '', unidade: 'und', estoqueAtual: 0, estoqueMinimo: 0, custoUnitario: 0, fornecedor: '' };
 
@@ -45,7 +46,11 @@ export default function Materiais() {
     <div>
       <div className="topbar">
         <h1>Materiais / Estoque</h1>
-        <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo material</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-linha" onClick={() => exportarMateriaisCsv(lista)}>CSV</button>
+          <button className="btn btn-linha" onClick={() => exportarMateriaisExcel(lista).catch(() => window.alert('Não foi possível gerar o arquivo Excel.'))}>Excel</button>
+          <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo material</button>
+        </div>
       </div>
 
       <div className="card">

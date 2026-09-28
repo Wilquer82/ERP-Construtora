@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
-import { exportarOrcamentoPdf } from '../utils/exporters.js';
+import { exportarOrcamentoPdf, exportarOrcamentosCsv, exportarOrcamentosExcel } from '../utils/exporters.js';
 
 const itemVazio = { descricao: '', unidade: 'und', quantidade: 1, custoUnitario: 0, materialVinculado: '', etapa: '' };
 const vazio = { obra: '', cliente: '', descricao: '', itens: [{ ...itemVazio }], desconto: 0, acrescimo: 0, status: 'rascunho', validadeDias: 30 };
@@ -94,7 +94,11 @@ export default function Orcamentos() {
     <div>
       <div className="topbar">
         <h1>Orçamentos</h1>
-        <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo orçamento</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-linha" onClick={() => exportarOrcamentosCsv(lista)}>CSV</button>
+          <button className="btn btn-linha" onClick={() => exportarOrcamentosExcel(lista).catch(() => window.alert('Não foi possível gerar o arquivo Excel.'))}>Excel</button>
+          <button className="btn btn-destaque" onClick={abrirNovo}>+ Novo orçamento</button>
+        </div>
       </div>
 
       <div className="card">

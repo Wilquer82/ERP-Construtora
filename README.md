@@ -189,6 +189,29 @@ Links de recuperacao expiram em 15 minutos e convites em 7 dias. Administradores
 ou reenviam convites pela tela de usuarios. O banco guarda somente o hash SHA-256 dos
 tokens, que sao de uso unico.
 
+### Relatórios e conciliação financeira
+
+- Cadastre as contas em **Financeiro** com o saldo inicial conferido. O saldo atual reflete
+  esse saldo inicial e as baixas conciliadas; receber aumenta e pagar reduz o saldo bancário.
+- Toda baixa financeira seleciona uma conta e data efetiva; ela cria um movimento bancário
+  único e atualiza o saldo na mesma transação. Lançamentos pagos legados sem conciliação
+  podem ser conciliados posteriormente. Lançamentos conciliados ficam bloqueados para edição
+  e exclusão.
+- Recebimentos devem estar cobertos pelo saldo da conta; o sistema bloqueia uma saída que
+  deixaria o saldo negativo.
+- O financeiro pode ser exportado para CSV ou Excel por mês de vencimento. Orçamentos e
+  materiais/estoque possuem exportação Excel nas respectivas telas.
+- Em **Obras**, selecione o período e gere o PDF com avanço físico/financeiro, medições,
+  lançamentos com vencimento no período e posição atual do estoque com movimentos da obra
+  no período.
+- O Dashboard alerta estoque abaixo do mínimo, contas a pagar com vencimento entre hoje e
+  os próximos três dias e obras em andamento cujo avanço físico está mais de 10 pontos
+  percentuais abaixo do progresso linear esperado entre início e previsão de término.
+
+As conciliações usam transações MongoDB. Configure `MONGO_URI` para um replica set
+(MongoDB Atlas já oferece essa configuração); em ambiente local, configure também o
+replica set antes de testar essas operações.
+
 ```bash
 cd frontend && npm run build   # gera dist/
 # sirva dist/ a partir do backend (express.static) ou hospede na Vercel/Netlify

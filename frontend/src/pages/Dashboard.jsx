@@ -27,6 +27,8 @@ const statusColors = {
 export default function Dashboard() {
   const [dados, setDados] = useState(null);
   const [fluxo, setFluxo] = useState([]);
+  const [alertas, setAlertas] = useState({ estoqueBaixo: [], contasVencendo: [], obrasAtrasadas: [] });
+  const [erroAlertas, setErroAlertas] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -38,6 +40,13 @@ export default function Dashboard() {
     }).catch(() => {
       setDados(null);
       setFluxo([]);
+    });
+    api.get('/dashboard/alertas').then((alertasResponse) => {
+      setAlertas(alertasResponse.data);
+      setErroAlertas('');
+    }).catch(() => {
+      setAlertas({ estoqueBaixo: [], contasVencendo: [], obrasAtrasadas: [] });
+      setErroAlertas('Não foi possível carregar os alertas operacionais.');
     });
   }, []);
 
@@ -68,6 +77,15 @@ export default function Dashboard() {
   return (
     <div>
       <div className="topbar"><h1>Dashboard</h1></div>
+      {erroAlertas && <div className="erro" role="alert">{erroAlertas}</div>}
+      {(alertas.estoqueBaixo.length > 0 || alertas.contasVencendo.length > 0 || alertas.obrasAtrasadas.length > 0) && (
+        <div className="card" style={{ marginBottom: 18, borderColor: 'var(--aviso)' }}>
+          <h3>Alertas operacionais</h3>
+          {alertas.estoqueBaixo.length > 0 && <p><strong>Estoque abaixo do mínimo:</strong> {alertas.estoqueBaixo.map((material) => `${material.nome} (${material.estoqueAtual}/${material.estoqueMinimo})`).join(' • ')} <Link to="/materiais">Ver estoque</Link></p>}
+          {alertas.contasVencendo.length > 0 && <p><strong>Contas a pagar vencendo em até 3 dias:</strong> {alertas.contasVencendo.map((conta) => `${conta.descricao} (${fmtData(conta.dataVencimento)} — ${fmtMoeda(conta.valor)})`).join(' • ')} <Link to="/financeiro">Abrir financeiro</Link></p>}
+          {alertas.obrasAtrasadas.length > 0 && <p><strong>Obras atrasadas mais de 10 p.p.:</strong> {alertas.obrasAtrasadas.map((obra) => `${obra.nome} (previsto ${obra.percentualPrevisto}%, realizado ${obra.percentualConclusao}%)`).join(' • ')} <Link to="/obras">Ver obras</Link></p>}
+        </div>
+      )}
       <div className="grid-cards">
         {cards.map((c) => (
           <div key={c.rotulo} className={`kpi ${c.cls}`}>

@@ -22,6 +22,8 @@ router.get('/', async (req, res, next) => {
     const docs = await Orcamento.find()
       .populate('obra', 'nome')
       .populate('cliente', 'nome')
+      .populate('itens.materialVinculado', 'nome')
+      .populate('itens.etapa', 'descricao')
       .sort({ createdAt: -1 });
     res.json(docs);
   } catch (err) { next(err); }

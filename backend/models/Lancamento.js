@@ -15,6 +15,8 @@ const lancamentoSchema = new mongoose.Schema({
   fornecedorVinculado: { type: mongoose.Schema.Types.ObjectId, ref: 'Fornecedor' },
   pedidoCompra: { type: mongoose.Schema.Types.ObjectId, ref: 'PedidoCompra' },
   contrato: { type: mongoose.Schema.Types.ObjectId, ref: 'Contrato' },
+  contaBancaria: { type: mongoose.Schema.Types.ObjectId, ref: 'ContaBancaria' },
+  movimentoBancario: { type: mongoose.Schema.Types.ObjectId, ref: 'MovimentoBancario' },
   numeroParcela: { type: Number, min: 1 },
   formaPagamento: String,
   observacoes: String

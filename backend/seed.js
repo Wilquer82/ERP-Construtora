@@ -13,6 +13,8 @@ import Obra from './models/Obra.js';
 import Orcamento from './models/Orcamento.js';
 import PedidoCompra from './models/PedidoCompra.js';
 import PasswordReset from './models/PasswordReset.js';
+import ContaBancaria from './models/ContaBancaria.js';
+import MovimentoBancario from './models/MovimentoBancario.js';
 import { runWithTenant } from './middleware/tenantContext.js';
 import { seedDemoCompany } from './services/demoCompany.js';
 import { isValidEmail, passwordError } from './utils/security.js';
@@ -41,7 +43,9 @@ const models = [
   Obra,
   Orcamento,
   PedidoCompra,
-  PasswordReset
+  PasswordReset,
+  ContaBancaria,
+  MovimentoBancario
 ];
 await Promise.all(models.map((Model) => Model.createIndexes()));
 let demo = await Empresa.findOne({ slug: 'demo' });

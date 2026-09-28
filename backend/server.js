@@ -20,6 +20,7 @@ import usuarioRoutes from './routes/usuarios.js';
 import dashboardRoutes from './routes/dashboard.js';
 import medicaoRoutes from './routes/medicoes.js';
 import empresaRoutes from './routes/empresas.js';
+import contaBancariaRoutes from './routes/contasBancarias.js';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -89,6 +90,7 @@ app.use('/api/medicoes', medicaoRoutes);
 app.use('/api/orcamentos', orcamentoRoutes);
 app.use('/api/contratos', contratoRoutes);
 app.use('/api/financeiro', financeiroRoutes);
+app.use('/api/contas-bancarias', contaBancariaRoutes);
 app.use('/api/materiais', materialRoutes);
 app.use('/api/fornecedores', fornecedorRoutes);
 app.use('/api/compras', compraRoutes);

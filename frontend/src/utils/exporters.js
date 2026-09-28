@@ -105,18 +105,175 @@ export function exportarContratoPdf(contrato) {
 }
 
 export function exportarFinanceiroCsv(lancamentos) {
-  const header = ['Tipo', 'Descrição', 'Categoria', 'Valor', 'Vencimento', 'Status', 'Obra', 'Cliente'];
+  const header = ['Tipo', 'Descrição', 'Categoria', 'Valor', 'Vencimento', 'Pagamento', 'Status', 'Obra', 'Cliente', 'Fornecedor', 'Conta bancária', 'Conciliado'];
   const rows = (lancamentos || []).map((item) => [
     item.tipo || '',
     item.descricao || '',
     item.categoria || '',
     Number(item.valor || 0).toFixed(2),
     item.dataVencimento ? new Date(item.dataVencimento).toLocaleDateString('pt-BR') : '',
+    item.dataPagamento ? new Date(item.dataPagamento).toLocaleDateString('pt-BR') : '',
     item.status || '',
     item.obra?.nome || '',
-    item.cliente?.nome || ''
+    item.cliente?.nome || '',
+    item.fornecedorVinculado?.nome || item.fornecedor || '',
+    item.contaBancaria?.nome || '',
+    item.movimentoBancario ? 'Sim' : 'Não'
   ]);
 
   const csv = [header, ...rows].map((linha) => linha.map((valor) => `"${String(valor).replace(/"/g, '""')}"`).join(',')).join('\n');
-  baixarArquivo(csv, 'financeiro-export.csv', 'text/csv;charset=utf-8;');
+  baixarArquivo(`\uFEFF${csv}`, 'financeiro-export.csv', 'text/csv;charset=utf-8;');
+}
+
+async function baixarExcel(nomeArquivo, folhas) {
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.utils.book_new();
+  for (const { nome, linhas } of folhas) {
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(linhas), nome);
+  }
+  const conteudo = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  baixarArquivo(conteudo, nomeArquivo, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+function baixarCsv(nomeArquivo, linhas) {
+  const csv = linhas
+    .map((linha) => linha.map((valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  baixarArquivo(`\uFEFF${csv}`, nomeArquivo, 'text/csv;charset=utf-8;');
+}
+
+export async function exportarFinanceiroExcel(lancamentos, mes) {
+  const header = ['Tipo', 'Descrição', 'Categoria', 'Valor', 'Vencimento', 'Pagamento', 'Status', 'Obra', 'Cliente', 'Fornecedor', 'Conta bancária', 'Conciliado'];
+  const rows = (lancamentos || []).map((item) => [
+    item.tipo || '',
+    item.descricao || '',
+    item.categoria || '',
+    Number(item.valor || 0),
+    item.dataVencimento ? new Date(item.dataVencimento) : '',
+    item.dataPagamento ? new Date(item.dataPagamento) : '',
+    item.status || '',
+    item.obra?.nome || '',
+    item.cliente?.nome || '',
+    item.fornecedorVinculado?.nome || item.fornecedor || '',
+    item.contaBancaria?.nome || '',
+    item.movimentoBancario ? 'Sim' : 'Não'
+  ]);
+  await baixarExcel(`financeiro-${mes}.xlsx`, [{ nome: 'Financeiro', linhas: [header, ...rows] }]);
+}
+
+function linhasOrcamentos(orcamentos) {
+  const linhas = [['Obra', 'Cliente', 'Descrição', 'Status', 'Item', 'Unidade', 'Quantidade', 'Custo unitário', 'Total item', 'Material', 'Etapa']];
+  for (const orcamento of orcamentos || []) {
+    for (const item of orcamento.itens || []) {
+      linhas.push([
+        orcamento.obra?.nome || '',
+        orcamento.cliente?.nome || '',
+        orcamento.descricao || '',
+        orcamento.status || '',
+        item.descricao || '',
+        item.unidade || '',
+        Number(item.quantidade || 0),
+        Number(item.custoUnitario || 0),
+        Number(item.quantidade || 0) * Number(item.custoUnitario || 0),
+        item.materialVinculado?.nome || '',
+        item.etapa?.descricao || ''
+      ]);
+    }
+  }
+  return linhas;
+}
+
+export async function exportarOrcamentosExcel(orcamentos) {
+  await baixarExcel('orcamentos.xlsx', [{ nome: 'Itens', linhas: linhasOrcamentos(orcamentos) }]);
+}
+
+export function exportarOrcamentosCsv(orcamentos) {
+  baixarCsv('orcamentos.csv', linhasOrcamentos(orcamentos));
+}
+
+function linhasMateriais(materiais) {
+  const linhas = [
+    ['Código', 'Material', 'Categoria', 'Unidade', 'Estoque atual', 'Estoque mínimo', 'Custo unitário', 'Valor em estoque', 'Fornecedor']
+  ];
+  for (const material of materiais || []) {
+    linhas.push([
+      material.codigo || '',
+      material.nome || '',
+      material.categoria || '',
+      material.unidade || '',
+      Number(material.estoqueAtual || 0),
+      Number(material.estoqueMinimo || 0),
+      Number(material.custoUnitario || 0),
+      Number(material.estoqueAtual || 0) * Number(material.custoUnitario || 0),
+      material.fornecedor || ''
+    ]);
+  }
+  return linhas;
+}
+
+export async function exportarMateriaisExcel(materiais) {
+  await baixarExcel('materiais-estoque.xlsx', [{ nome: 'Materiais', linhas: linhasMateriais(materiais) }]);
+}
+
+export function exportarMateriaisCsv(materiais) {
+  baixarCsv('materiais-estoque.csv', linhasMateriais(materiais));
+}
+
+export function exportarRelatorioObraPdf(relatorio) {
+  const { obra, periodo, medicoes, lancamentos, estoque } = relatorio;
+  const doc = new jsPDF();
+  doc.setFontSize(18);
+  doc.text('Relatório da obra', 14, 18);
+  doc.setFontSize(11);
+  doc.text(obra.nome, 14, 27);
+  doc.setFontSize(9);
+  doc.text(`Período: ${new Date(periodo.inicio).toLocaleDateString('pt-BR')} a ${new Date(periodo.fim).toLocaleDateString('pt-BR')}`, 14, 34);
+  doc.text(`Avanço físico: ${Number(obra.percentualConclusao || 0)}%`, 14, 41);
+  doc.text(`Orçamento consumido: ${fmtMoeda(obra.valorConsumido)} de ${fmtMoeda(obra.valorOrcamentoComparativo)} (${Number(obra.percentualFinanceiro || 0)}%)`, 14, 48);
+
+  autoTable(doc, {
+    head: [['Data', 'Etapa', 'Quantidade', 'Preço unitário', 'Valor medido', 'Observação']],
+    body: (medicoes || []).map((medicao) => [
+      new Date(medicao.data).toLocaleDateString('pt-BR'),
+      medicao.etapa?.descricao || '-',
+      `${medicao.quantidade} ${medicao.etapa?.unidade || ''}`,
+      fmtMoeda(medicao.etapa?.precoUnitario || 0),
+      fmtMoeda(Number(medicao.quantidade || 0) * Number(medicao.etapa?.precoUnitario || 0)),
+      medicao.observacao || '-'
+    ]),
+    startY: 56,
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [20, 84, 130] }
+  });
+
+  autoTable(doc, {
+    head: [['Vencimento', 'Tipo', 'Descrição', 'Valor', 'Status', 'Conta bancária']],
+    body: (lancamentos || []).map((item) => [
+      new Date(item.dataVencimento).toLocaleDateString('pt-BR'),
+      item.tipo,
+      item.descricao,
+      fmtMoeda(item.valor),
+      item.status,
+      item.contaBancaria?.nome || '-'
+    ]),
+    startY: doc.lastAutoTable.finalY + 8,
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [20, 84, 130] }
+  });
+
+  autoTable(doc, {
+    head: [['Material', 'Estoque atual', 'Mínimo', 'Entradas no período', 'Saídas no período']],
+    body: (estoque || []).map((item) => [
+      item.nome,
+      `${item.estoqueAtual} ${item.unidade}`,
+      `${item.estoqueMinimo} ${item.unidade}`,
+      item.movimentosPeriodo.filter((movimento) => movimento.tipo === 'entrada').reduce((total, movimento) => total + Number(movimento.quantidade || 0), 0),
+      item.movimentosPeriodo.filter((movimento) => movimento.tipo === 'saida').reduce((total, movimento) => total + Number(movimento.quantidade || 0), 0)
+    ]),
+    startY: doc.lastAutoTable.finalY + 8,
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [20, 84, 130] }
+  });
+
+  doc.save(`relatorio-obra-${String(obra.nome || 'obra').replace(/\s+/g, '-').toLowerCase()}.pdf`);
 }

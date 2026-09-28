@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { fmtMoeda, fmtData } from '../api.js';
+import { exportarRelatorioObraPdf } from '../utils/exporters.js';
 
 const vazio = { codigo: '', nome: '', descricao: '', endereco: '', cidade: '', uf: '', cliente: '', status: 'planejamento', valorOrcamento: 0, dataInicio: '', dataPrevisaoFim: '', responsavel: '' };
 
@@ -19,6 +20,14 @@ export default function Obras() {
   const [sugestoesEstoque, setSugestoesEstoque] = useState([]);
   const [baixasConcluidas, setBaixasConcluidas] = useState([]);
   const [erroEtapas, setErroEtapas] = useState('');
+  const [periodoRelatorio, setPeriodoRelatorio] = useState(() => {
+    const hoje = new Date();
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return {
+      inicio: `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`,
+      fim: `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+    };
+  });
 
   const carregar = () => {
     api.get('/obras').then((r) => setLista(r.data));
@@ -108,6 +117,15 @@ export default function Obras() {
     }
   };
 
+  const exportarRelatorioObra = async (obra) => {
+    try {
+      const resposta = await api.get(`/obras/${obra._id}/relatorio`, { params: periodoRelatorio });
+      exportarRelatorioObraPdf(resposta.data);
+    } catch (error) {
+      window.alert(error.response?.data?.error || 'Não foi possível gerar o relatório da obra.');
+    }
+  };
+
   const salvar = async (e) => {
     e.preventDefault();
     const payload = { ...form, valorOrcamento: Number(form.valorOrcamento) };
@@ -127,7 +145,11 @@ export default function Obras() {
     <div>
       <div className="topbar">
         <h1>Obras</h1>
-        <button className="btn btn-destaque" onClick={abrirNovo}>+ Nova obra</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+          <label className="campo"><span>Relatório desde</span><input type="date" value={periodoRelatorio.inicio} onChange={(e) => setPeriodoRelatorio({ ...periodoRelatorio, inicio: e.target.value })} /></label>
+          <label className="campo"><span>Até</span><input type="date" value={periodoRelatorio.fim} onChange={(e) => setPeriodoRelatorio({ ...periodoRelatorio, fim: e.target.value })} /></label>
+          <button className="btn btn-destaque" onClick={abrirNovo}>+ Nova obra</button>
+        </div>
       </div>
 
       <div className="card">
@@ -168,6 +190,7 @@ export default function Obras() {
                   <td>
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEdicao(o)}>Editar</button>{' '}
                     <button className="btn btn-linha btn-mini" onClick={() => abrirEtapas(o)}>Etapas / medições</button>{' '}
+                    <button className="btn btn-linha btn-mini" onClick={() => exportarRelatorioObra(o)}>Relatório PDF</button>{' '}
                     <button className="btn btn-perigo btn-mini" onClick={() => excluir(o._id)}>Excluir</button>
                   </td>
                 </tr>

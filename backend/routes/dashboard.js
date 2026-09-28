@@ -109,4 +109,55 @@ router.get('/resumo', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.get('/alertas', async (req, res, next) => {
+  try {
+    const agora = new Date();
+    const inicioHoje = new Date(agora);
+    inicioHoje.setUTCHours(0, 0, 0, 0);
+    const limiteVencimento = new Date(inicioHoje);
+    limiteVencimento.setUTCDate(limiteVencimento.getUTCDate() + 3);
+    limiteVencimento.setUTCHours(23, 59, 59, 999);
+    const [estoqueBaixo, contasVencendo, obrasEmAndamento] = await Promise.all([
+      Material.find({ $expr: { $lt: ['$estoqueAtual', '$estoqueMinimo'] } }).sort({ nome: 1 }),
+      Lancamento.find({
+        tipo: 'pagar',
+        status: { $ne: 'pago' },
+        dataVencimento: { $gte: inicioHoje, $lte: limiteVencimento }
+      }).populate('obra', 'nome').sort({ dataVencimento: 1 }),
+      Obra.find({
+        status: 'em_andamento',
+        dataInicio: { $type: 'date' },
+        dataPrevisaoFim: { $type: 'date' }
+      }).sort({ dataPrevisaoFim: 1 })
+    ]);
+    const obrasProgresso = await incluirProgressoObras(obrasEmAndamento);
+    const obrasAtrasadas = obrasProgresso.flatMap((obra) => {
+      const inicio = new Date(obra.dataInicio).getTime();
+      const fim = new Date(obra.dataPrevisaoFim).getTime();
+      const agoraMs = Date.now();
+      if (fim <= inicio || agoraMs <= inicio) return [];
+      const esperado = Math.min(100, Math.max(0, ((agoraMs - inicio) / (fim - inicio)) * 100));
+      const atraso = Math.round((esperado - Number(obra.percentualConclusao || 0)) * 100) / 100;
+      return atraso > 10 ? [{ _id: obra._id, nome: obra.nome, percentualConclusao: obra.percentualConclusao, percentualPrevisto: Math.round(esperado * 100) / 100, atrasoPercentual: atraso, dataPrevisaoFim: obra.dataPrevisaoFim }] : [];
+    });
+
+    res.json({
+      estoqueBaixo: estoqueBaixo.map((material) => ({
+        _id: material._id,
+        nome: material.nome,
+        estoqueAtual: material.estoqueAtual,
+        estoqueMinimo: material.estoqueMinimo
+      })),
+      contasVencendo: contasVencendo.map((lancamento) => ({
+        _id: lancamento._id,
+        descricao: lancamento.descricao,
+        valor: lancamento.valor,
+        dataVencimento: lancamento.dataVencimento,
+        obra: lancamento.obra?.nome || ''
+      })),
+      obrasAtrasadas
+    });
+  } catch (err) { next(err); }
+});
+
 export default router;

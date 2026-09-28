@@ -91,7 +91,10 @@ export default function tenantPlugin(schema) {
           this.invalidate(path, 'Referencia invalida');
           continue;
         }
-        const exists = await mongoose.model(ref).exists({ _id: id, empresa: context.empresaId });
+        const referenceQuery = mongoose.model(ref).exists({ _id: id, empresa: context.empresaId });
+        const session = this.$session?.();
+        if (session) referenceQuery.session(session);
+        const exists = await referenceQuery;
         if (!exists) this.invalidate(path, 'Referencia inexistente para esta empresa');
       }
     }
@@ -116,7 +119,10 @@ export default function tenantPlugin(schema) {
               error.status = 400;
               throw error;
             }
-            const exists = await mongoose.model(ref).exists({ _id: id, empresa: context.empresaId });
+            const referenceQuery = mongoose.model(ref).exists({ _id: id, empresa: context.empresaId });
+            const session = this.getOptions().session;
+            if (session) referenceQuery.session(session);
+            const exists = await referenceQuery;
             if (!exists) {
               const error = new Error('Referencia inexistente para esta empresa');
               error.status = 400;

@@ -2,6 +2,9 @@ import express from 'express';
 import Obra from '../models/Obra.js';
 import Etapa from '../models/Etapa.js';
 import Medicao from '../models/Medicao.js';
+import Material from '../models/Material.js';
+import Lancamento from '../models/Lancamento.js';
+import Orcamento from '../models/Orcamento.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
 import { incluirProgressoObras } from '../utils/progressoObra.js';
@@ -82,6 +85,57 @@ router.get('/:id/evolucao', async (req, res, next) => {
       acumulado += mes.valorMedido;
       return { mes: mes._id, valorMedido: mes.valorMedido, percentualConclusao: previsto ? Math.min(100, Math.round((acumulado / previsto) * 10000) / 100) : 0 };
     }));
+  } catch (err) { next(err); }
+});
+
+router.get('/:id/relatorio', async (req, res, next) => {
+  try {
+    const inicio = new Date(req.query.inicio);
+    const fim = new Date(req.query.fim);
+    if (!req.query.inicio || !req.query.fim || Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime()) || inicio > fim) {
+      return res.status(400).json({ error: 'Informe um periodo valido com inicio e fim' });
+    }
+    inicio.setUTCHours(0, 0, 0, 0);
+    fim.setUTCHours(23, 59, 59, 999);
+    const obra = await Obra.findById(req.params.id).populate('cliente', 'nome');
+    if (!obra) return res.status(404).json({ error: 'Obra nao encontrada' });
+
+    const [obraIndicadores, medicoes, lancamentos, orcamentos] = await Promise.all([
+      incluirProgressoObras([obra]),
+      Medicao.find({ obra: obra._id, data: { $gte: inicio, $lte: fim } })
+        .populate('etapa', 'descricao unidade precoUnitario')
+        .sort({ data: 1 }),
+      Lancamento.find({ obra: obra._id, dataVencimento: { $gte: inicio, $lte: fim } })
+        .populate('contaBancaria', 'nome banco')
+        .sort({ dataVencimento: 1 }),
+      Orcamento.find({ obra: obra._id, status: 'aprovado' }).select('itens.materialVinculado')
+    ]);
+    const materiaisOrcados = orcamentos.flatMap((orcamento) => orcamento.itens.map((item) => item.materialVinculado).filter(Boolean));
+    const materiais = await Material.find({
+      $or: [
+        { 'movimentos.obra': obra._id },
+        ...(materiaisOrcados.length ? [{ _id: { $in: materiaisOrcados } }] : [])
+      ]
+    }).sort({ nome: 1 });
+
+    res.json({
+      obra: obraIndicadores[0],
+      periodo: { inicio, fim },
+      medicoes,
+      lancamentos,
+      estoque: materiais.map((material) => ({
+        _id: material._id,
+        nome: material.nome,
+        unidade: material.unidade,
+        estoqueAtual: material.estoqueAtual,
+        estoqueMinimo: material.estoqueMinimo,
+        movimentosPeriodo: material.movimentos.filter((movimento) => (
+          String(movimento.obra) === String(obra._id)
+          && movimento.data >= inicio
+          && movimento.data <= fim
+        ))
+      }))
+    });
   } catch (err) { next(err); }
 });
 

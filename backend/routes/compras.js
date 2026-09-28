@@ -165,7 +165,10 @@ router.post('/:id/receber', adminOnly, async (req, res, next) => {
     });
 
     res.json(resposta);
-  } catch (err) { next(err); }
+  } catch (err) {
+    if ([400, 404, 409].includes(err?.status)) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
   finally { await session.endSession(); }
 });
 

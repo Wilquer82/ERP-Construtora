@@ -6,27 +6,28 @@ import Material from '../models/Material.js';
 import Lancamento from '../models/Lancamento.js';
 import Orcamento from '../models/Orcamento.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { obraScope, obraAccess } from '../middleware/obraAccess.js';
 import { pick } from '../utils/fields.js';
 import { incluirProgressoObras } from '../utils/progressoObra.js';
 
 const router = express.Router();
 router.use(protect);
 
-router.get('/', async (req, res, next) => {
+router.get('/', obraScope(), async (req, res, next) => {
   try {
-    const docs = await Obra.find().populate('cliente', 'nome').sort({ createdAt: -1 });
+    const docs = await Obra.find(req.obrasFiltro).populate('cliente', 'nome').sort({ createdAt: -1 });
     res.json(await incluirProgressoObras(docs));
   } catch (err) { next(err); }
 });
 
-router.get('/:id/etapas', async (req, res, next) => {
+router.get('/:id/etapas', obraAccess, async (req, res, next) => {
   try {
     const etapas = await Etapa.find({ obra: req.params.id }).sort({ createdAt: 1 });
     res.json(etapas);
   } catch (err) { next(err); }
 });
 
-router.post('/:id/etapas', async (req, res, next) => {
+router.post('/:id/etapas', obraAccess, async (req, res, next) => {
   try {
     const obraExiste = await Obra.exists({ _id: req.params.id });
     if (!obraExiste) return res.status(404).json({ error: 'Obra nao encontrada' });
@@ -35,7 +36,7 @@ router.post('/:id/etapas', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.put('/:id/etapas/:etapaId', async (req, res, next) => {
+router.put('/:id/etapas/:etapaId', obraAccess, async (req, res, next) => {
   try {
     const etapa = await Etapa.findOneAndUpdate(
       { _id: req.params.etapaId, obra: req.params.id, quantidadeMedida: 0 },
@@ -47,7 +48,7 @@ router.put('/:id/etapas/:etapaId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/:id/etapas/:etapaId', async (req, res, next) => {
+router.delete('/:id/etapas/:etapaId', obraAccess, async (req, res, next) => {
   try {
     const etapa = await Etapa.findOne({ _id: req.params.etapaId, obra: req.params.id });
     if (!etapa) return res.status(404).json({ error: 'Etapa nao encontrada' });
@@ -59,7 +60,7 @@ router.delete('/:id/etapas/:etapaId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/:id/evolucao', async (req, res, next) => {
+router.get('/:id/evolucao', obraAccess, async (req, res, next) => {
   try {
     const obra = await Obra.findById(req.params.id);
     if (!obra) return res.status(404).json({ error: 'Obra nao encontrada' });
@@ -88,7 +89,7 @@ router.get('/:id/evolucao', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/:id/relatorio', async (req, res, next) => {
+router.get('/:id/relatorio', obraAccess, async (req, res, next) => {
   try {
     const inicio = new Date(req.query.inicio);
     const fim = new Date(req.query.fim);
@@ -139,7 +140,7 @@ router.get('/:id/relatorio', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', obraAccess, async (req, res, next) => {
   try {
     const doc = await Obra.findById(req.params.id).populate('cliente');
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });
@@ -154,7 +155,7 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', obraAccess, async (req, res, next) => {
   try {
     const doc = await Obra.findByIdAndUpdate(req.params.id, pick(req.body, ['codigo', 'nome', 'descricao', 'endereco', 'cidade', 'uf', 'cliente', 'status', 'valorOrcamento', 'dataInicio', 'dataPrevisaoFim', 'dataConclusao', 'responsavel']), { new: true, runValidators: true });
     if (!doc) return res.status(404).json({ error: 'Nao encontrado' });

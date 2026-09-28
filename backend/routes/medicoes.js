@@ -5,6 +5,7 @@ import Medicao from '../models/Medicao.js';
 import Orcamento from '../models/Orcamento.js';
 import Material from '../models/Material.js';
 import { protect } from '../middleware/auth.js';
+import { obraAccess } from '../middleware/obraAccess.js';
 
 const router = express.Router();
 router.use(protect);
@@ -37,7 +38,7 @@ async function sugerirBaixasEstoque(obraId, etapa, quantidadeMedida) {
   }));
 }
 
-router.get('/', async (req, res, next) => {
+router.get('/', obraAccess, async (req, res, next) => {
   try {
     if (!req.query.obra) return res.status(400).json({ error: 'Informe a obra para listar medicoes' });
     const docs = await Medicao.find({ obra: req.query.obra })
@@ -47,7 +48,7 @@ router.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', obraAccess, async (req, res, next) => {
   try {
     const { obra, etapa, quantidade, data, observacao } = req.body;
     const quantidadeNumerica = Number(quantidade);
@@ -101,7 +102,7 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/:id/baixa-estoque', async (req, res, next) => {
+router.post('/:id/baixa-estoque', obraAccess, async (req, res, next) => {
   try {
     const medicao = await Medicao.findById(req.params.id);
     if (!medicao) return res.status(404).json({ error: 'Medicao nao encontrada' });
@@ -141,6 +142,78 @@ router.post('/:id/baixa-estoque', async (req, res, next) => {
       return res.json({ material: materialAtual, quantidade: sugestao.quantidade, jaBaixado: true });
     }
     return res.status(409).json({ error: 'Estoque insuficiente para a baixa sugerida' });
+  } catch (err) { next(err); }
+});
+
+// POST /medicoes/batch — sincronização em lote de medicoes offline
+router.post('/batch', async (req, res, next) => {
+  try {
+    const { medicoes } = req.body;
+    if (!Array.isArray(medicoes) || medicoes.length === 0) {
+      return res.status(400).json({ error: 'Array medicoes e obrigatorio' });
+    }
+    if (medicoes.length > 100) {
+      return res.status(400).json({ error: 'Limite de 100 medicoes por lote' });
+    }
+
+    const resultados = { criadas: [], erros: [] };
+    for (const med of medicoes) {
+      try {
+        const { obra, etapa, quantidade, data, observacao } = med;
+        const quantidadeNumerica = Number(quantidade);
+        if (!obra || !etapa || !Number.isFinite(quantidadeNumerica) || quantidadeNumerica <= 0) {
+          throw new Error('Informe obra, etapa e quantidade positiva');
+        }
+
+        // Verificar acesso a obra
+        const adminOuSuper = req.user?.role === 'admin' || req.user?.superAdmin;
+        if (!adminOuSuper) {
+          const obras = req.user?.obras || [];
+          if (obras.length === 0 || !obras.some((o) => String(o) === String(obra))) {
+            throw new Error('Acesso negado a esta obra');
+          }
+        }
+
+        if (!await Obra.exists({ _id: obra })) throw new Error('Obra nao encontrada');
+
+        const etapaAtual = await Etapa.findOne({ _id: etapa, obra });
+        if (!etapaAtual) throw new Error('Etapa inexistente para esta obra');
+
+        const etapaAtualizada = await Etapa.findOneAndUpdate(
+          {
+            _id: etapa,
+            obra,
+            $expr: { $lte: [{ $add: ['$quantidadeMedida', quantidadeNumerica] }, '$quantidadeTotal'] }
+          },
+          [
+            { $set: {
+              quantidadeMedida: { $add: ['$quantidadeMedida', quantidadeNumerica] },
+              status: { $cond: [
+                { $gte: [{ $add: ['$quantidadeMedida', quantidadeNumerica] }, '$quantidadeTotal'] },
+                'concluida',
+                'em_andamento'
+              ] }
+            } }
+          ],
+          { new: true }
+        );
+        if (!etapaAtualizada) throw new Error('Etapa inexistente ou quantidade acima do saldo');
+
+        const medicao = await Medicao.create({
+          obra,
+          etapa,
+          quantidade: quantidadeNumerica,
+          data: data || new Date(),
+          responsavel: String(med.responsavel || req.user.nome).trim(),
+          observacao: observacao ? String(observacao).trim() : undefined
+        });
+        await medicao.populate('etapa', 'descricao unidade');
+        resultados.criadas.push({ medicao, etapa: etapaAtualizada });
+      } catch (err) {
+        resultados.erros.push({ medicao: med, erro: err.message });
+      }
+    }
+    res.json(resultados);
   } catch (err) { next(err); }
 });
 

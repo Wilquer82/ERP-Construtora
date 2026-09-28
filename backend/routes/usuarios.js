@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Obra from '../models/Obra.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
 import { isValidEmail } from '../utils/security.js';
@@ -18,7 +19,7 @@ router.get('/', adminOnly, async (req, res, next) => {
 
 router.post('/', adminOnly, async (req, res, next) => {
   try {
-    const { nome, email, role, ativo } = req.body || {};
+    const { nome, email, role, ativo, obras } = req.body || {};
     if (!nome || !email) return res.status(400).json({ error: 'Preencha nome e email' });
     const emailNormalizado = String(email).trim().toLowerCase();
     if (!isValidEmail(emailNormalizado)) return res.status(400).json({ error: 'Email invalido' });
@@ -31,7 +32,8 @@ router.post('/', adminOnly, async (req, res, next) => {
       senha: `A1${randomBytes(32).toString('hex')}`,
       role: ['admin', 'usuario'].includes(role) ? role : 'usuario',
       ativo: ativo !== false,
-      trocarSenha: true
+      trocarSenha: true,
+      obras: Array.isArray(obras) ? obras : []
     });
     try {
       await sendInvitation(user);
@@ -46,6 +48,7 @@ router.post('/', adminOnly, async (req, res, next) => {
       role: user.role,
       ativo: user.ativo,
       trocarSenha: user.trocarSenha,
+      obras: user.obras,
       conviteEnviado: true
     });
   } catch (err) {
@@ -82,7 +85,7 @@ router.put('/:id', adminOnly, async (req, res, next) => {
       return res.status(403).json({ error: 'Somente o super-administrador pode alterar esta conta' });
     }
 
-    const payload = pick(req.body || {}, ['nome', 'email', 'role', 'ativo']);
+    const payload = pick(req.body || {}, ['nome', 'email', 'role', 'ativo', 'obras']);
     if (payload.nome) user.nome = String(payload.nome).trim();
     if (payload.email) {
       user.email = String(payload.email).trim().toLowerCase();
@@ -90,6 +93,7 @@ router.put('/:id', adminOnly, async (req, res, next) => {
     }
     if (payload.role && ['admin', 'usuario'].includes(payload.role)) user.role = payload.role;
     if (typeof payload.ativo === 'boolean') user.ativo = payload.ativo;
+    if (Array.isArray(payload.obras)) user.obras = payload.obras;
 
     await user.save();
     res.json({
@@ -98,7 +102,8 @@ router.put('/:id', adminOnly, async (req, res, next) => {
       email: user.email,
       role: user.role,
       ativo: user.ativo,
-      trocarSenha: user.trocarSenha
+      trocarSenha: user.trocarSenha,
+      obras: user.obras
     });
   } catch (err) { next(err); }
 });

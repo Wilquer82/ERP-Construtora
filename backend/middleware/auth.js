@@ -20,30 +20,33 @@ export async function protect(req, res, next) {
     return res.status(401).json({ error: 'Token invalido ou expirado' });
   }
 
-  const user = await User.findById(decoded.id).select('_id nome email role ativo superAdmin trocarSenha tokenVersion empresa');
-  if (!user || !user.ativo || user.tokenVersion !== (decoded.tokenVersion || 0)) {
-    return res.status(401).json({ error: 'Token invalido ou usuario inativo' });
-  }
-  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  const superAdmin = user.superAdmin && user.role === 'admin' && superAdminEmail !== '' && user.email === superAdminEmail;
-  const empresaId = user.empresa ? String(user.empresa) : null;
-  if (!superAdmin && !empresaId) {
-    return res.status(403).json({ error: 'Usuario sem empresa vinculada' });
-  }
-  if (empresaId) {
-    const empresa = await Empresa.findById(empresaId).select('_id nome ativo');
-    if (!empresa || !empresa.ativo) return res.status(403).json({ error: 'Empresa inativa ou inexistente' });
-    req.empresa = empresa;
-  }
-  req.user = {
-    id: user._id,
-    nome: user.nome,
-    email: user.email,
-    role: user.role,
-    trocarSenha: user.trocarSenha,
-    empresa: empresaId,
-    superAdmin
-  };
+   const user = await User.findById(decoded.id).select('_id nome email role ativo superAdmin trocarSenha tokenVersion empresa obras');
+   if (!user || !user.ativo || user.tokenVersion !== (decoded.tokenVersion || 0)) {
+     return res.status(401).json({ error: 'Token invalido ou usuario inativo' });
+   }
+   const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+   const superAdmin = user.superAdmin && user.role === 'admin' && superAdminEmail !== '' && user.email === superAdminEmail;
+   const empresaId = user.empresa ? String(user.empresa) : null;
+   if (!superAdmin && !empresaId) {
+     return res.status(403).json({ error: 'Usuario sem empresa vinculada' });
+   }
+   if (empresaId) {
+     const empresa = await Empresa.findById(empresaId).select('_id nome ativo');
+     if (!empresa || !empresa.ativo) return res.status(403).json({ error: 'Empresa inativa ou inexistente' });
+     req.empresa = empresa;
+   }
+   const adminOuSuper = user.role === 'admin' || superAdmin;
+   const obrasPermitidas = adminOuSuper ? null : (user.obras || []);
+   req.user = {
+     id: user._id,
+     nome: user.nome,
+     email: user.email,
+     role: user.role,
+     trocarSenha: user.trocarSenha,
+     empresa: empresaId,
+     superAdmin,
+     obras: obrasPermitidas
+   };
 
   if (user.trocarSenha && !['/me', '/logout', '/trocar-senha', '/esqueci-senha', '/reset-senha'].includes(req.path)) {
     return res.status(403).json({ error: 'Troca de senha obrigatoria', trocarSenha: true });

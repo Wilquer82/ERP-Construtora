@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
   ativo: { type: Boolean, default: true },
   superAdmin: { type: Boolean, default: false },
   trocarSenha: { type: Boolean, default: false },
-  tokenVersion: { type: Number, default: 0 }
+  tokenVersion: { type: Number, default: 0 },
+  obras: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Obra' }]
 }, { timestamps: true });
 
 userSchema.plugin(tenantPlugin);

@@ -1,6 +1,9 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import { analisarImagem } from '../services/assistente/extratorFoto.js';
+import Obra from '../models/Obra.js';
+import Lancamento from '../models/Lancamento.js';
 import { protect } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
 import MensagemAssistente from '../models/MensagemAssistente.js';
 import { assistente, criarAssistenteComChave } from '../services/assistente/index.js';
 import { FERRAMENTAS_DISPONIVEIS } from '../services/assistente/LLMService.js';
@@ -21,6 +24,30 @@ router.use(chatLimiter);
 function extrairDemoFlag(instancia) {
   return instancia?.modoEmissao === 'demo';
 }
+
+router.post('/analisar-imagem', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    if (imagemBase64.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Imagem muito grande (max 10MB)' });
+
+    const resultado = await analisarImagem(imagemBase64);
+
+    if (resultado.tipo === 'comprovante_abastecimento') {
+      const obras = await Obra.find({ status: 'em_andamento' }).select('nome codigo').sort({ nome: 1 });
+      return res.json({
+        tipo: 'comprovante_abastecimento',
+        dados: resultado.dados || {},
+        isDemo: !!resultado.isDemo,
+        obras: obras.map((o) => ({ _id: o._id, nome: o.nome, codigo: o.codigo }))
+      });
+    }
+
+    return res.json({ tipo: 'outro', resumo: resultado.resumo || 'Não foi possível classificar a imagem.' });
+  } catch (err) {
+    return next(err);
+  }
+});
 
 router.post('/validar-chave', async (req, res, next) => {
   try {

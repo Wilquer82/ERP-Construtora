@@ -236,6 +236,99 @@ function FotoWidget({ onFotoSelecionada, obrasSugeridas, onObraSelecionada, onTe
   );
 }
 
+function CardComprovante({ dados, obras, isDemo, onConfirmar }) {
+  const [obraId, setObraId] = useState('');
+  const [editandoValor, setEditandoValor] = useState(false);
+  const [valorEditado, setValorEditado] = useState(dados?.valor || 0);
+
+  if (!dados) return null;
+
+  const handleConfirmar = () => {
+    if (!obraId) {
+      setChat((prev) => [...prev, {
+        tipo: 'assistant',
+        texto: 'Selecione uma obra antes de confirmar.',
+        fontes: [],
+        acaoSugerida: ''
+      }]);
+      return;
+    }
+    onConfirmar(obraId, { ...dados, valor: Number(valorEditado) || 0 });
+  };
+
+  return (
+    <div style={{
+      maxWidth: '85%',
+      background: 'var(--fundo-card)',
+      border: '2px solid #35d18a',
+      borderTopLeftRadius: 4,
+      borderTopRightRadius: 16,
+      borderBottomRightRadius: 16,
+      borderBottomLeftRadius: 16,
+      padding: 14,
+      lineHeight: 1.5
+    }}>
+      {isDemo && <MarcaDemo />}
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#35d18a', marginBottom: 8 }}>
+        📸 Comprovante de Abastecimento
+      </div>
+
+      <div style={{ fontSize: 12, color: '#e2e8f0', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
+        {'- Posto: ' + (dados.nomePosto || 'Nao identificado')}
+        {'\n- Data: ' + (dados.data ? new Date(dados.data).toLocaleDateString('pt-BR') : '-')}
+        {'\n- Valor: R$ ' + (Number(valorEditado) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {dados.litros ? '\n- Litros: ' + dados.litros + 'L' : ''}
+        {dados.placa ? '\n- Placa: ' + dados.placa : ''}
+        {dados.cnpj ? '\n- CNPJ: ' + dados.cnpj : ''}
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 11, color: '#91a4b2', display: 'block', marginBottom: 4 }}>Obra</label>
+        <select
+          value={obraId}
+          onChange={(e) => setObraId(e.target.value)}
+          style={{
+            width: '100%',
+            background: 'var(--fundo-input)',
+            border: '1px solid var(--borda)',
+            borderRadius: 6,
+            padding: '6px 8px',
+            color: 'var(--texto)',
+            fontSize: 12
+          }}
+        >
+          <option value="">Selecione a obra...</option>
+          {(obras || []).map((o) => (
+            <option key={String(o._id)} value={o._id}>
+              {o.nome}{o.codigo ? ` (${o.codigo})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleConfirmar}
+          disabled={!obraId}
+          style={{
+            padding: '8px 16px',
+            background: obraId ? 'var(--primaria)' : 'var(--borda)',
+            color: obraId ? '#0c171c' : '#64748b',
+            border: 'none',
+            borderRadius: 6,
+            cursor: obraId ? 'pointer' : 'default',
+            fontWeight: 600,
+            fontSize: 12
+          }}
+        >
+          Confirmar lancamento
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Assistente() {
   const [mensagem, setMensagem] = useState('');
   const [chat, setChat] = useState([]);
@@ -367,34 +460,60 @@ export default function Assistente() {
     setFotoBase64(base64);
     setDadosFoto(null);
 
+    setChat((prev) => [...prev, {
+      tipo: 'assistant',
+      texto: 'Analisando comprovante... aguarde',
+      fontes: [],
+      acaoSugerida: ''
+    }]);
+
     try {
-      const payload = montarPayload('Leia esta nota fiscal de combustível');
-      payload.arquivoBase64 = base64;
+      const { data } = await api.post('/assistente/analisar-imagem', { imagemBase64: base64 });
 
-      const { data } = await api.post('/lancamento-foto/enviar-foto', payload);
+      if (data.tipo === 'comprovante_abastecimento') {
+        setDadosFoto({
+          valor: data.dados?.valor || 0,
+          dataNota: data.dados?.data,
+          litros: data.dados?.litros || 0,
+          nomePosto: data.dados?.nomePosto || 'Nao identificado',
+          cnpj: data.dados?.cnpj || '',
+          placa: data.dados?.placa || '',
+          isDemo: data.isDemo,
+          obras: data.obras || []
+        });
 
-      const botMessage = `🔬 Extrai dados da nota:
+        const cardMessage = `Comprovante de abastecimento detectado!
 
-• Posto: ${data.lancamentoFoto.nomePosto || 'Não identificado'}
-• Data: ${data.lancamentoFoto.dataNota ? new Date(data.lancamentoFoto.dataNota).toLocaleDateString('pt-BR') : '—'}
-• Valor: ${fmtMoeda(data.lancamentoFoto.valor)}
+- Posto: ${data.dados?.nomePosto || 'Nao identificado'}
+- Data: ${data.dados?.data ? new Date(data.dados.data).toLocaleDateString('pt-BR') : '-'}
+- Valor: ${fmtMoeda(data.dados?.valor || 0)}
+${data.dados?.litros ? `- Litros: ${data.dados.litros}L` : ''}
+${data.dados?.placa ? `- Placa: ${data.dados.placa}` : ''}
+${data.dados?.cnpj ? `- CNPJ: ${data.dados.cnpj}` : ''}
 
-🏗️ Qual obra?\n${data.obrasSugeridas.map((o, i) => `${i + 1}. ${o.nome}`).join('\n')}`;
+Selecione a obra para lancar a despesa:
+${(data.obras || []).map((o, i) => `${i + 1}. ${o.nome}${o.codigo ? ` (${o.codigo})` : ''}`).join('\n') || 'Nenhuma obra em andamento.'}`;
 
-      setDadosFoto({ ...data.lancamentoFoto, obras: data.obrasSugeridas });
-
-      setChat((prev) => [...prev, {
-        tipo: 'assistant',
-        texto: botMessage,
-        fontes: [],
-        acaoSugerida: '',
-        fotoData: data.lancamentoFoto,
-        obras: data.obrasSugeridas,
-        lancamentoFotoId: data.lancamentoFoto._id
-      }]);
+        setChat((prev) => [...prev.slice(0, -1), {
+          tipo: 'comprovante',
+          texto: cardMessage,
+          fontes: [],
+          acaoSugerida: '',
+          fotoData: data.dados,
+          obras: data.obras || [],
+          isDemo: data.isDemo
+        }]);
+      } else {
+        setChat((prev) => [...prev.slice(0, -1), {
+          tipo: 'assistant',
+          texto: data.resumo || 'Nao foi possivel classificar a imagem.',
+          fontes: [],
+          acaoSugerida: ''
+        }]);
+      }
     } catch (err) {
-      const msg = err.response?.data?.error || 'Erro ao processar foto.';
-      setChat((prev) => [...prev, {
+      const msg = err.response?.data?.erro || 'Erro ao processar imagem.';
+      setChat((prev) => [...prev.slice(0, -1), {
         tipo: 'assistant',
         texto: msg,
         fontes: [],
@@ -404,30 +523,38 @@ export default function Assistente() {
     setFotoWidget(false);
   };
 
-  const handleObraSelecionada = async (lancamentoFotoId, obraId) => {
+  const handleConfirmarDespesa = async (obraId, dados) => {
     try {
-      const { data } = await api.patch(`/lancamento-foto/${lancamentoFotoId}/informar-obra`, {
+      const { data } = await api.post('/despesas', {
         obraId,
-        nomeObraInformado: data?.obra?.nome || ''
+        categoria: 'Combustivel',
+        valor: dados.valor,
+        dataVencimento: dados.dataNota || new Date(),
+        fornecedor: dados.nomePosto,
+        placa: dados.placa,
+        litros: dados.litros
       });
 
       setChat((prev) => [...prev, {
         tipo: 'assistant',
-        texto: `✅ Registrado!
-• Valor: ${fmtMoeda(dadosFoto?.valor || 0)}
-• Obra: ${data.obraConfirmada?.nome || 'Confirmada'}
-
-Aguardando confirmação do gestor. 🔵 PENDENTE`,
+        texto: `Despesa lancada com sucesso!
+- Valor: ${fmtMoeda(data.valor)}
+- Obra: ${data.obraNome}
+- ID: ${String(data._id).slice(-6)}`,
         fontes: [],
         acaoSugerida: ''
       }]);
 
       setDadosFoto(null);
       setFotoBase64(null);
-      setTextoObra('');
     } catch (err) {
-      const msg = err.response?.data?.error || 'Erro ao vincular obra.';
-      setChat((prev) => [...prev, { tipo: 'assistant', texto: msg, fontes: [], acaoSugerida: '' }]);
+      const msg = err.response?.data?.erro || 'Erro ao lancar despesa.';
+      setChat((prev) => [...prev, {
+        tipo: 'assistant',
+        texto: `Erro: ${msg}`,
+        fontes: [],
+        acaoSugerida: ''
+      }]);
     }
   };
 
@@ -641,6 +768,13 @@ Aguardando confirmação do gestor. 🔵 PENDENTE`,
             )}
             {msg.tipo === 'user' ? (
               <BubbleUsuario mensagem={msg.texto} />
+            ) : msg.tipo === 'comprovante' ? (
+              <CardComprovante
+                dados={msg.fotoData}
+                obras={msg.obras}
+                isDemo={msg.isDemo}
+                onConfirmar={handleConfirmarDespesa}
+              />
             ) : (
               <BubbleAssistente
                 mensagem={msg.texto}

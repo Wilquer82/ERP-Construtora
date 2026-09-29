@@ -75,11 +75,19 @@ export default function Colaboradores() {
                   <td>{c.nome}</td>
                   <td>{c.funcao}</td>
                   <td>{c.tipo === 'diarista' ? 'Diarista' : 'Mensalista'}</td>
-                  <td>
-                    {c.tipo === 'diarista'
-                      ? fmtMoeda(c.valorDiaria)
-                      : `${fmtMoeda(calcularDiaria(c))} <small>(calculado de R$ ${c.salarioMensal}/mês ÷ 22)</small>`}
-                  </td>
+<td>
+  {c.tipo === 'diarista'
+    ? fmtMoeda(c.valorDiaria)
+    : (
+      <>
+        {fmtMoeda(calcularDiaria(c))}
+        <small style={{ display: 'block', fontSize: '11px', color: '#91a4b2' }}>
+          (calculado de R$ {Number(c.salarioMensal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês ÷ 22)
+        </small>
+      </>
+    )
+  }
+</td>
                   <td>{c.obraAtual ? OBRAS_MOCK.find((o) => o._id === c.obraAtual)?.nome || '-' : '-'}</td>
                   <td><span className={`badge ${c.status === 'ativo' ? '' : c.status === 'afastado' ? 'status-pausada' : 'status-pausada'}`}>{c.status}</span></td>
                   <td>

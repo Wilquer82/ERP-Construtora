@@ -117,7 +117,7 @@ router.get('/obras-pendentes', async (req, res, next) => {
 
     const obras = await incluirProgressoObras(obrasBase);
 
-    res.json(Obras.map((obra) => ({
+    res.json(obras.map((obra) => ({
       _id: obra._id,
       codigo: obra.codigo,
       nome: obra.nome,

@@ -122,7 +122,7 @@ app.use('/api/lancamento-foto', lancamentoFotoRoutes);
 // Servir frontend em producao
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(distPath));
-  app.get('*', (req, res, next) => {
+  app.get('(.*)', (req, res, next) => {
     // Nao interceptar rotas de API, healthz ou auth
     if (req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.path === '/healthz') {
       return next();

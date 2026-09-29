@@ -1,7 +1,7 @@
 import cron from 'node-cron';
-import Empresa from '../models/Empresa.js';
-import User from '../models/User.js';
-import MensagemAssistente from '../models/MensagemAssistente.js';
+import Empresa from '../../models/Empresa.js';
+import User from '../../models/User.js';
+import MensagemAssistente from '../../models/MensagemAssistente.js';
 import { resumoDoDia } from './ferramentas.js';
 import { formatarResumo } from './resumos.js';
 
@@ -34,7 +34,7 @@ async function _gerarResumoEmpresa(empresa) {
     const admin = await User.findOne({ empresa: empresa._id, role: 'admin', ativo: true }).select('_id');
 
     const contexto = { empresaId: String(empresa._id), bypass: true };
-    const { runWithTenant } = await import('../middleware/tenantContext.js');
+    const { runWithTenant } = await import('../../middleware/tenantContext.js');
 
     await runWithTenant(contexto, async () => {
       const resumoData = await resumoDoDia();

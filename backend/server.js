@@ -3,9 +3,15 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import errorHandler from './middleware/errorHandler.js';
 import { isValidEmail } from './utils/security.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../frontend/dist');
 
 import authRoutes from './routes/auth.js';
 import clienteRoutes from './routes/clientes.js';
@@ -112,6 +118,18 @@ app.use('/api/pontos', pontoRoutes);
 app.use('/api/certidoes', certidaoRoutes);
 app.use('/api/assistente', assistenteRoutes);
 app.use('/api/lancamento-foto', lancamentoFotoRoutes);
+
+// Servir frontend em producao
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    // Nao interceptar rotas de API, healthz ou auth
+    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.path === '/healthz') {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 app.get('/healthz', (req, res) => {
 	if (mongoose.connection.readyState !== 1) {

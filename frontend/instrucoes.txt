@@ -1,0 +1,46 @@
+Implementação completa. O projeto agora contempla todos os módulos descritos no PDF "Sistema Financeiro + IA - Especificação Funcional V2".
+
+Resumo do que foi implementado
+Models criados (13 novos)
+Model	Módulo PDF
+Empreiteiro, ContratoEmpreiteiro, MovimentoEmpreiteiro	04 - Controle de Empreiteiros
+Reembolso, ItemReembolso, PagamentoReembolso	05 - Controle de Reembolsos
+VinculoMovimentacao	Vínculo técnico Despesa↔Reembolso
+Cheque	06 - Controle de Cheques
+Acordo, DebitoOriginal, ParcelaAcordo	07 - Controle de Acordos
+RecebivelObra	08 - Recebíveis de Obras
+UsuarioWhatsApp, InteracaoIA, ConfirmacaoIA, ArquivoDocumento	14 - IA/WhatsApp
+Atualizações em models existentes
+Fornecedor e Cliente: adicionados chavesPix[] e dadosBancarios
+Routes backend (7 novas + atualizações)
+/api/empreiteiros - CRUD + contratos + movimentos + resumo
+/api/reembolsos - CRUD + itens + pagamentos + criação despesa vinculada
+/api/cheques - CRUD + baixa + resumo por status
+/api/acordos - CRUD + débitos + parcelas + geração automática + baixa
+/api/recebiveis-obra - CRUD + recebimento + resumo por obra
+/api/usuario-whatsapp - CRUD usuários autorizados
+/api/interacao-ia - histórico + confirmação
+/api/arquivos-documentos - gestão de arquivos
+/api/whatsapp - webhook + envio teste + alertas proativos
+/api/assistente - endpoints OCR (boleto, NF, cheque, PIX, genérico) + processamento WhatsApp
+Serviços novos
+services/whatsapp/providers.js - Evolution API e Z-API
+services/whatsapp/index.js - processamento webhook, mensagens proativas
+services/assistente/whatsappProcessor.js - IA com prévia → confirmação → gravação
+services/assistente/extratorFoto.js - OCR expandido (boleto, NF, cheque, PIX, genérico)
+services/assistente/scheduler.js - alertas proativos a cada hora (9h-18h)
+Frontend (8 novas páginas)
+Empreiteiros, ContratosEmpreiteiro, Reembolsos, Cheques, Acordos, RecebiveisObra, UsuarioWhatsApp, WhatsApp (chat IA)
+Fluxo IA/WhatsApp implementado
+Usuário envia mensagem/comprovante no WhatsApp
+IA extrai dados (OCR), identifica intenção
+IA prepara prévias (não grava nada)
+Usuário confirma via "Confirmar e Executar"
+Sistema executa prévias, cria vínculos (ex: Despesa + Reembolso)
+Log completo em InteracaoIA + ConfirmacaoIA
+Alertas proativos (scheduler)
+Contas a pagar vencendo hoje/amanhã
+Obras com atraso > 10%
+Certidões vencendo em 5 dias
+Documentos RH críticos (≤2 dias)
+Para rodar: configure .env no backend com MONGO_URI, JWT_SECRET e variáveis WhatsApp (WHATSAPP_PROVIDER, WHATSAPP_BASE_URL, WHATSAPP_API_KEY, WHATSAPP_INSTANCE, WHATSAPP_VERIFY_TOKEN).

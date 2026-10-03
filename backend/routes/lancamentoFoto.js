@@ -5,7 +5,7 @@ import Obra from '../models/Obra.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { pick } from '../utils/fields.js';
 import { recalcularObra } from '../utils/calculoObra.js';
-import { ft } from '../services/assistente/extratorFoto.js';
+import { analisarImagem } from '../services/assistente/extratorFoto.js';
 
 const router = express.Router();
 router.use(protect);
@@ -30,7 +30,24 @@ router.post('/enviar-foto', async (req, res, next) => {
 
     let dadosExtraidos;
     try {
-      dadosExtraidos = await ft.extrairDadosNota(arquivoBase64);
+      const resultado = await analisarImagem(arquivoBase64);
+      if (resultado.tipo === 'comprovante_abastecimento') {
+        dadosExtraidos = {
+          valor: resultado.dados?.valor || null,
+          dataNota: resultado.dados?.data || null,
+          nomePosto: resultado.dados?.nomePosto || null,
+          cnpjPosto: resultado.dados?.cnpj || null,
+          isDemo: !!resultado.isDemo
+        };
+      } else {
+        dadosExtraidos = {
+          valor: null,
+          dataNota: null,
+          nomePosto: null,
+          cnpjPosto: null,
+          isDemo: true
+        };
+      }
     } catch (err) {
       dadosExtraidos = {
         valor: null,

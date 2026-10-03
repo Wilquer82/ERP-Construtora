@@ -3,7 +3,7 @@ import UsuarioWhatsApp from '../../models/UsuarioWhatsApp.js';
 import InteracaoIA from '../../models/InteracaoIA.js';
 import ConfirmacaoIA from '../../models/ConfirmacaoIA.js';
 import ArquivoDocumento from '../../models/ArquivoDocumento.js';
-import { processarMensagemIA } from '../assistente/index.js';
+import { processarMensagemIA } from '../assistente/whatsappProcessor.js';
 
 class WhatsAppService {
   constructor() {

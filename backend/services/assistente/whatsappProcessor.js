@@ -389,7 +389,7 @@ async function processarComprovanteRecebimento(empresaId, mensagem, dadosExtraid
     };
 
     return {
-      resposta: `Encontrei uma receita correspondente:\n\n📋 **${receitaEncontrada.descricao}**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'')}}\n📅 Vencimento: ${new Date(receitaEncontrada.dataVencimento).toLocaleDateString('pt-BR')}\n🏗️ Obra: ${receitaEncontrada.obra?.nome || 'Não informada'}\n👤 Cliente: ${receitaEncontrada.cliente?.nome || 'Não informado'}\n\n**Dados do comprovante:**\n• Valor recebido: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'')}}\n• Data: ${dataRecebimento.toLocaleDateString('pt-BR')}\n\nConfirmar baixa desta receita?`,
+      resposta: `Encontrei uma receita correspondente:\n\n📋 **${receitaEncontrada.descricao}**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}\n📅 Vencimento: ${new Date(receitaEncontrada.dataVencimento).toLocaleDateString('pt-BR')}\n🏗️ Obra: ${receitaEncontrada.obra?.nome || 'Não informada'}\n👤 Cliente: ${receitaEncontrada.cliente?.nome || 'Não informado'}\n\n**Dados do comprovante:**\n• Valor recebido: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}\n• Data: ${dataRecebimento.toLocaleDateString('pt-BR')}\n\nConfirmar baixa desta receita?`,
       requerConfirmacao: true,
       previas: [previa],
       ferramentasUsadas: [],
@@ -414,7 +414,7 @@ async function processarComprovanteRecebimento(empresaId, mensagem, dadosExtraid
     };
 
     return {
-      resposta: `Não encontrei NF/receita em aberto correspondente. Vou criar um novo recebível:\n\n📋 **Novo recebimento de obra**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'')}}\n📅 Data recebimento: ${dataRecebimento.toLocaleDateString('pt-BR')}\n🏗️ Obra: ${obra.nome}\n\nConfirmar criação deste recebimento?`,
+      resposta: `Não encontrei NF/receita em aberto correspondente. Vou criar um novo recebível:\n\n📋 **Novo recebimento de obra**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}\n📅 Data recebimento: ${dataRecebimento.toLocaleDateString('pt-BR')}\n🏗️ Obra: ${obra.nome}\n\nConfirmar criação deste recebimento?`,
       requerConfirmacao: true,
       previas: [previa],
       ferramentasUsadas: [],
@@ -479,7 +479,7 @@ async function processarComprovanteReembolso(empresaId, mensagem, dadosExtraidos
   };
 
   return {
-    resposta: `Vou criar um reembolso com lançamento duplo vinculado:\n\n📋 **1. Despesa (Módulo 01)**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'')}}\n📅 Data: ${dataDespesa.toLocaleDateString('pt-BR')}\n🏗️ Obra: ${obra?.nome || 'Não informada'}\n👤 Beneficiário: ${beneficiario || 'Não identificado'}\n🏷️ Categoria: ${categoria}\n\n📋 **2. Controle de Reembolso (Módulo 05)**\n• Mesmo valor, mesma data, mesma obra\n• Vinculado à despesa acima\n\n⚠️ Ambos serão criados juntos com vínculo técnico.\n\nConfirmar criação dos dois registros?`,
+    resposta: `Vou criar um reembolso com lançamento duplo vinculado:\n\n📋 **1. Despesa (Módulo 01)**\n💰 Valor: ${valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}\n📅 Data: ${dataDespesa.toLocaleDateString('pt-BR')}\n🏗️ Obra: ${obra?.nome || 'Não informada'}\n👤 Beneficiário: ${beneficiario || 'Não identificado'}\n🏷️ Categoria: ${categoria}\n\n📋 **2. Controle de Reembolso (Módulo 05)**\n• Mesmo valor, mesma data, mesma obra\n• Vinculado à despesa acima\n\n⚠️ Ambos serão criados juntos com vínculo técnico.\n\nConfirmar criação dos dois registros?`,
     requerConfirmacao: true,
     previas: [previaDespesa, previaReembolso],
     ferramentasUsadas: [],

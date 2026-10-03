@@ -1,5 +1,5 @@
 import express from 'express';
-import { analisarImagem } from '../services/assistente/extratorFoto.js';
+import { analisarImagem, processarImagemComprovante, processarImagemBoleto, processarImagemNF, processarImagemCheque, processarImagemPIX, processarImagemGenerica } from '../services/assistente/extratorFoto.js';
 import Obra from '../models/Obra.js';
 import Lancamento from '../models/Lancamento.js';
 import { protect } from '../middleware/auth.js';
@@ -7,6 +7,9 @@ import rateLimit from 'express-rate-limit';
 import MensagemAssistente from '../models/MensagemAssistente.js';
 import { assistente, criarAssistenteComChave } from '../services/assistente/index.js';
 import { FERRAMENTAS_DISPONIVEIS } from '../services/assistente/LLMService.js';
+import { processarMensagemIA, executarPreviasConfirmadas } from '../services/assistente/whatsappProcessor.js';
+import ConfirmacaoIA from '../models/ConfirmacaoIA.js';
+import InteracaoIA from '../models/InteracaoIA.js';
 
 const router = express.Router();
 
@@ -142,6 +145,119 @@ router.post('/chat', async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
+});
+
+// WhatsApp IA Processor endpoint
+router.post('/whatsapp/processar', async (req, res, next) => {
+  try {
+    const { mensagem, anexo, usuarioWhatsAppId } = req.body || {};
+    if (!mensagem || typeof mensagem !== 'string') {
+      return res.status(400).json({ error: 'Mensagem e obrigatoria' });
+    }
+
+    const resultado = await processarMensagemIA({
+      empresaId: req.user.empresa,
+      usuarioWhatsAppId: usuarioWhatsAppId || req.user.id,
+      mensagem,
+      perfil: 'financeiro',
+      permissoes: { consultar: true, lancar: true, confirmar: true, verDocumentos: true },
+      anexo
+    });
+
+    return res.json(resultado);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Executar prévias confirmadas
+router.post('/whatsapp/executar-previas', async (req, res, next) => {
+  try {
+    const { interacaoIAId, confirmacaoId } = req.body || {};
+    if (!interacaoIAId || !confirmacaoId) {
+      return res.status(400).json({ error: 'interacaoIAId e confirmacaoId sao obrigatorios' });
+    }
+
+    const confirmacao = await ConfirmacaoIA.findById(confirmacaoId);
+    if (!confirmacao) return res.status(404).json({ error: 'Confirmacao nao encontrada' });
+    if (!confirmacao.confirmado) return res.status(400).json({ error: 'Confirmacao nao foi aprovada' });
+
+    const interacao = await InteracaoIA.findById(interacaoIAId);
+    if (!interacao) return res.status(404).json({ error: 'Interacao nao encontrada' });
+
+    const resultados = await executarPreviasConfirmadas(
+      req.user.empresa,
+      confirmacao.previasApresentadas,
+      req.user.id
+    );
+
+    // Atualiza interacao
+    interacao.status = 'concluido';
+    await interacao.save();
+
+    // Atualiza confirmacao com resultados
+    confirmacao.acoesExecutadas = resultados;
+    await confirmacao.save();
+
+    return res.json({ resultados, interacao, confirmacao });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Endpoints OCR específicos
+router.post('/ocr/comprovante', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemComprovante(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
+});
+
+router.post('/ocr/boleto', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemBoleto(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
+});
+
+router.post('/ocr/nota-fiscal', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemNF(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
+});
+
+router.post('/ocr/cheque', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemCheque(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
+});
+
+router.post('/ocr/pix', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemPIX(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
+});
+
+router.post('/ocr/generico', async (req, res, next) => {
+  try {
+    const { imagemBase64 } = req.body || {};
+    if (!imagemBase64) return res.status(400).json({ error: 'imagemBase64 e obrigatorio' });
+    const resultado = await processarImagemGenerica(imagemBase64);
+    return res.json(resultado);
+  } catch (err) { return next(err); }
 });
 
 router.get('/historico', async (req, res, next) => {

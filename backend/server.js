@@ -36,6 +36,15 @@ import certidaoRoutes from './routes/certidoes.js';
 import lancamentoFotoRoutes from './routes/lancamentoFoto.js';
 import despesasRoutes from './routes/despesas.js';
 import assistenteRoutes from './routes/assistente.js';
+import empreiteiroRoutes from './routes/empreiteiros.js';
+import reembolsoRoutes from './routes/reembolsos.js';
+import chequeRoutes from './routes/cheques.js';
+import acordoRoutes from './routes/acordos.js';
+import recebivelObraRoutes from './routes/recebiveisObra.js';
+import usuarioWhatsAppRoutes from './routes/usuarioWhatsApp.js';
+import interacaoIARoutes from './routes/interacaoIA.js';
+import arquivoDocumentoRoutes from './routes/arquivoDocumento.js';
+import whatsappRoutes from './routes/whatsapp.js';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -120,6 +129,15 @@ app.use('/api/certidoes', certidaoRoutes);
 app.use('/api/assistente', assistenteRoutes);
 app.use('/api/lancamento-foto', lancamentoFotoRoutes);
 app.use('/api/despesas', despesasRoutes);
+app.use('/api/empreiteiros', empreiteiroRoutes);
+app.use('/api/reembolsos', reembolsoRoutes);
+app.use('/api/cheques', chequeRoutes);
+app.use('/api/acordos', acordoRoutes);
+app.use('/api/recebiveis-obra', recebivelObraRoutes);
+app.use('/api/usuario-whatsapp', usuarioWhatsAppRoutes);
+app.use('/api/interacao-ia', interacaoIARoutes);
+app.use('/api/arquivos-documentos', arquivoDocumentoRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Servir frontend em producao
 if (process.env.NODE_ENV === 'production') {

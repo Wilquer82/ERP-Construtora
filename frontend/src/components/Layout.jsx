@@ -14,7 +14,15 @@ const menu = [
   { to: '/fornecedores', icone: 'clientes', texto: 'Fornecedores' },
   { to: '/compras', icone: 'orcamento', texto: 'Compras / Pedidos' },
   { to: '/rh', icone: 'rh', texto: 'RH', fim: true },
-  { to: '/usuarios', icone: 'clientes', texto: 'Usuários e permissões' },
+  { to: '/empreiteiros', icone: 'rh', texto: 'Empreiteiros' },
+  { to: '/contratos-empreiteiro', icone: 'contrato', texto: 'Contratos Empreiteiro' },
+  { to: '/reembolsos', icone: 'financeiro', texto: 'Reembolsos' },
+  { to: '/cheques', icone: 'financeiro', texto: 'Cheques' },
+  { to: '/acordos', icone: 'financeiro', texto: 'Acordos' },
+  { to: '/recebiveis-obra', icone: 'financeiro', texto: 'Recebíveis Obra' },
+  { to: '/whatsapp', icone: 'assistente', texto: 'WhatsApp / IA' },
+  { to: '/whatsapp-config', icone: 'assistente', texto: 'Config. WhatsApp', admin: true },
+  { to: '/usuarios', icone: 'clientes', texto: 'Usuários e permissões', admin: true },
 ];
 
 function Icone({ nome }) {
@@ -42,7 +50,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const iniciais = (user?.nome || 'CE').split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
-  const menuVisivel = menu.filter((m) => m.to !== '/usuarios' || user?.role === 'admin');
+  const menuVisivel = menu.filter((m) => !m.admin || user?.role === 'admin');
 
   const sair = () => { logout(); navigate('/login'); };
 

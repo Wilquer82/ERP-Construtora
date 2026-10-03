@@ -12,7 +12,21 @@ const mensagemAssistenteSchema = new mongoose.Schema({
     referenciaId: { type: mongoose.Schema.Types.ObjectId },
     nome: { type: String, required: true }
   }],
-  acaoSugerida: { type: String }
+  acaoSugerida: { type: String },
+  confirmacao: {
+    type: new mongoose.Schema({
+      previas: [{
+        modelo: { type: String, required: true },
+        dados: { type: mongoose.Schema.Types.Mixed, required: true },
+        acao: { type: String, enum: ['criar', 'atualizar', 'baixar', 'cancelar'], required: true }
+      }],
+      status: { type: String, enum: ['pendente', 'processando', 'concluida', 'erro'], default: 'pendente' },
+      dataConfirmacao: Date,
+      resultados: [mongoose.Schema.Types.Mixed],
+      erro: String
+    }),
+    default: undefined
+  }
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
 mensagemAssistenteSchema.plugin(tenantPlugin);

@@ -1,7 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../api.js';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function WhatsApp() {
+  const { user } = useAuth();
+  const confirmandoRef = useRef(new Set());
   const [mensagens, setMensagens] = useState([]);
   const [input, setInput] = useState('');
   const [anexo, setAnexo] = useState(null);
@@ -9,8 +13,7 @@ export default function WhatsApp() {
   const [status, setStatus] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [historico, setHistorico] = useState([]);
-  const [usuariosWhatsApp, setUsuariosWhatsApp] = useState([]);
-  const [modo, setModo] = useState('chat');
+  const [confirmando, setConfirmando] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -24,7 +27,6 @@ export default function WhatsApp() {
   useEffect(() => {
     carregarStatus();
     carregarHistorico();
-    carregarUsuarios();
   }, []);
 
   const carregarStatus = async () => {
@@ -37,14 +39,7 @@ export default function WhatsApp() {
   const carregarHistorico = async () => {
     try {
       const resp = await api.get('/assistente/historico?limite=20');
-      setHistorico(resp.data.reverse());
-    } catch { }
-  };
-
-  const carregarUsuarios = async () => {
-    try {
-      const resp = await api.get('/usuario-whatsapp');
-      setUsuariosWhatsApp(resp.data);
+      setHistorico(resp.data);
     } catch { }
   };
 
@@ -52,7 +47,7 @@ export default function WhatsApp() {
     e.preventDefault();
     if (!input.trim() && !anexo) return;
 
-    const mensagemUsuario = { tipo: 'usuario', texto: input, anexo: anexoPreview, data: new Date() };
+    const mensagemUsuario = { tipo: 'usuario', texto: input, anexo: anexoPreview, anexoTipo: anexo?.type, anexoNome: anexo?.name, data: new Date() };
     setMensagens(prev => [...prev, mensagemUsuario]);
     setInput('');
     const anexoAtual = anexo;
@@ -61,13 +56,8 @@ export default function WhatsApp() {
     setCarregando(true);
 
     try {
-      const formData = new FormData();
-      formData.append('mensagem', input);
-      if (anexoAtual) {
-        formData.append('anexo', JSON.stringify({ url: anexoPreview, type: anexoAtual.type }));
-      }
       const resp = await api.post('/assistente/whatsapp/processar', { 
-        mensagem: input, 
+        mensagem: input.trim() || 'Preparar conta a pagar a partir do comprovante anexado.',
         anexo: anexoAtual ? { url: anexoPreview, type: anexoAtual.type } : null 
       });
       
@@ -75,18 +65,12 @@ export default function WhatsApp() {
         tipo: 'ia', 
         texto: resp.data.resposta, 
         requerConfirmacao: resp.data.requerConfirmacao,
+        interacaoId: resp.data.interacaoId,
+        confirmacaoId: resp.data.confirmacaoId,
         previas: resp.data.previas,
         data: new Date() 
       }]);
       
-      if (resp.data.requerConfirmacao) {
-        setMensagens(prev => [...prev, { 
-          tipo: 'confirmacao', 
-          previas: resp.data.previas,
-          interacaoId: resp.data.interacaoId,
-          data: new Date() 
-        }]);
-      }
     } catch (error) {
       setMensagens(prev => [...prev, { tipo: 'erro', texto: 'Erro ao processar mensagem.', data: new Date() }]);
     } finally {
@@ -95,15 +79,30 @@ export default function WhatsApp() {
     }
   };
 
-  const confirmarPrevias = async (previas, interacaoId) => {
+  const confirmarPrevias = async (interacaoId, confirmacaoId) => {
+    if (!interacaoId || !confirmacaoId || confirmandoRef.current.has(confirmacaoId)) return;
+    confirmandoRef.current.add(confirmacaoId);
+    setConfirmando(confirmacaoId);
     try {
-      const resp = await api.post('/assistente/whatsapp/executar-previas', { 
-        interacaoIAId: interacaoId, 
-        confirmacaoId: interacaoId 
+      const resp = await api.post('/assistente/whatsapp/executar-previas', {
+        interacaoIAId: interacaoId, confirmacaoId
       });
-      setMensagens(prev => [...prev, { tipo: 'sistema', texto: 'Prévias executadas com sucesso!', detalhes: resp.data.resultados, data: new Date() }]);
+      const resultados = resp.data.resultados || [];
+      const pendencias = resultados.some(resultado => resultado.sucesso === false);
+      setMensagens(prev => [
+        ...prev.map(msg => msg.confirmacaoId === confirmacaoId ? { ...msg, requerConfirmacao: false } : msg),
+        {
+          tipo: pendencias ? 'erro' : 'sistema',
+          texto: pendencias ? 'Execução concluída com pendências. Consulte os detalhes.' : 'Prévias executadas com sucesso!',
+          detalhes: resultados,
+          data: new Date()
+        }
+      ]);
     } catch (error) {
-      setMensagens(prev => [...prev, { tipo: 'erro', texto: 'Erro ao executar prévias.', data: new Date() }]);
+      setMensagens(prev => [...prev, { tipo: 'erro', texto: error.response?.data?.error || 'Erro ao executar prévias.', data: new Date() }]);
+    } finally {
+      confirmandoRef.current.delete(confirmacaoId);
+      setConfirmando(null);
     }
   };
 
@@ -127,71 +126,33 @@ export default function WhatsApp() {
     setAnexoPreview(null);
   };
 
-  if (modo === 'config') {
-    return (
-      <div>
-        <div className="topbar">
-          <h1>Configuração WhatsApp</h1>
-          <button className="btn btn-linha" onClick={() => setModo('chat')}>← Voltar ao Chat</button>
-        </div>
-        <div className="card">
-          <h2>Status da Integração</h2>
-          {status && (
-            <div className="grid-cards">
-              <div className="kpi"><div className="rotulo">Provedor</div><div className="valor">{status.provider}</div></div>
-              <div className="kpi"><div className="rotulo">Instância</div><div className="valor">{status.instance || 'Não configurada'}</div></div>
-              <div className="kpi"><div className="rotulo">Configurado</div><div className="valor">{status.configured ? '✅ Sim' : '❌ Não'}</div></div>
-            </div>
-          )}
-          {!status.configured && (
-            <div className="erro" style={{marginTop: 16}}>
-              <h3>Variáveis de ambiente necessárias:</h3>
-              <pre>WHATSAPP_PROVIDER=evolution
-WHATSAPP_BASE_URL=https://sua-evolution-api.com
-WHATSAPP_API_KEY=sua-chave-api
-WHATSAPP_INSTANCE=minha-instancia
-WHATSAPP_VERIFY_TOKEN=token-verificacao-webhook</pre>
-            </div>
-          )}
-        </div>
-        <div className="card" style={{marginTop: 16}}>
-          <h2>Usuários Autorizados</h2>
-          {usuariosWhatsApp.length === 0 ? <p>Nenhum usuário cadastrado.</p> : (
-            <table>
-              <thead><tr><th>Nome</th><th>Número</th><th>Perfil</th><th>Ativo</th></tr></thead>
-              <tbody>
-                {usuariosWhatsApp.map(u => (
-                  <tr key={u._id}>
-                    <td>{u.nome}</td>
-                    <td>{u.numero}</td>
-                    <td>{u.perfil}</td>
-                    <td>{u.ativo ? '✅' : '❌'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)'}}>
+    <div style={{display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 280px)'}}>
       <div className="topbar">
-        <h1>WhatsApp / Assistente IA</h1>
+        <h2>Lançamentos e comprovantes</h2>
         <div style={{display: 'flex', gap: 8}}>
-          <button className="btn btn-linha" onClick={() => setModo('config')}>Configurar</button>
-          <button className="btn btn-linha" onClick={() => setMensagens([])}>Limpar chat</button>
+          {user?.role === 'admin' && <NavLink className="btn btn-linha" to="/assistente/whatsapp">Configurar WhatsApp</NavLink>}
+          <button className="btn btn-linha" disabled={carregando || Boolean(confirmando)} onClick={() => setMensagens([])}>Limpar chat</button>
         </div>
       </div>
 
-      <div style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
+      {status && <p className="assistente-descricao">WhatsApp: {status.configured ? 'configurado' : 'não configurado'} · Provedor: {status.provider} · Instância: {status.instance || 'Não configurada'}</p>}
+      <details style={{marginBottom: 16}}>
+        <summary>Histórico de consultas ({historico.length})</summary>
+        {historico.length === 0 ? <p>Nenhuma consulta anterior.</p> : historico.map(item => (
+          <div className="card" key={item._id} style={{marginTop: 8}}>
+            <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+            <p><strong>{item.pergunta}</strong></p>
+            <p style={{whiteSpace: 'pre-wrap'}}>{item.resposta}</p>
+          </div>
+        ))}
+      </details>
+      <div style={{flex: 1, minHeight: 360, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
         <div style={{flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
           {mensagens.length === 0 ? (
             <div className="vazio" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
               <div>
-                <h3>🤖 Assistente Financeiro no WhatsApp</h3>
+                <h3>Assistente financeiro</h3>
                 <p>Envie mensagens ou anexe comprovantes para:</p>
                 <ul style={{textAlign: 'left', maxWidth: '400px', margin: '16px auto'}}>
                   <li>Consultar contas a pagar/receber</li>
@@ -225,10 +186,11 @@ WHATSAPP_VERIFY_TOKEN=token-verificacao-webhook</pre>
                     {msg.tipo === 'usuario' ? 'Você' : msg.tipo === 'ia' ? '🤖 Assistente' : msg.tipo === 'confirmacao' ? '⚠️ Aguardando Confirmação' : 'Sistema'}
                     {' '}• {new Date(msg.data).toLocaleTimeString('pt-BR')}
                   </div>
-                  {msg.anexo && (
-                    <img src={msg.anexo} alt="Anexo" style={{maxWidth: '200px', borderRadius: 8, marginBottom: 8}} />
+                  {msg.anexo && (msg.anexoTipo?.startsWith('image/')
+                    ? <img src={msg.anexo} alt="Anexo" style={{maxWidth: '200px', borderRadius: 8, marginBottom: 8}} />
+                    : <a href={msg.anexo} download={msg.anexoNome} style={{display: 'block', color: 'inherit', textDecoration: 'underline', marginBottom: 8}}>{msg.anexoNome || 'Baixar anexo'}</a>
                   )}
-                  <div>{msg.texto}</div>
+                  <div style={{whiteSpace: 'pre-wrap'}}>{msg.texto}</div>
                   
                   {msg.requerConfirmacao && msg.previas && (
                     <div style={{marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.1)', borderRadius: 8}}>
@@ -241,9 +203,10 @@ WHATSAPP_VERIFY_TOKEN=token-verificacao-webhook</pre>
                       <button 
                         className="btn btn-primario btn-mini" 
                         style={{marginTop: 8}}
-                        onClick={() => confirmarPrevias(msg.previas, msg.interacaoId)}
+                        disabled={Boolean(confirmando) || !msg.interacaoId || !msg.confirmacaoId}
+                        onClick={() => confirmarPrevias(msg.interacaoId, msg.confirmacaoId)}
                       >
-                        Confirmar e Executar
+                        {confirmando === msg.confirmacaoId ? 'Executando...' : 'Confirmar e Executar'}
                       </button>
                     </div>
                   )}
@@ -274,6 +237,7 @@ WHATSAPP_VERIFY_TOKEN=token-verificacao-webhook</pre>
               id="anexo-input"
               accept="image/*,application/pdf"
               onChange={handleFileChange}
+              disabled={carregando}
               style={{display: 'none'}}
             />
             <label htmlFor="anexo-input" className="btn btn-linha" style={{alignSelf: 'center'}}>
@@ -287,7 +251,7 @@ WHATSAPP_VERIFY_TOKEN=token-verificacao-webhook</pre>
               style={{flex: 1, minWidth: '200px', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--borda)', background: 'var(--fundo-input)', color: 'var(--texto)'}}
               disabled={carregando}
             />
-            <button type="submit" className="btn btn-primario" disabled={carregando || (!input.trim() && !anexo)}>
+            <button type="submit" className="btn btn-primario" disabled={carregando || Boolean(confirmando) || (!input.trim() && !anexo)}>
               {carregando ? 'Processando...' : 'Enviar'}
             </button>
           </div>

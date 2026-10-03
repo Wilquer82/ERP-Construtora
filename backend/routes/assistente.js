@@ -8,8 +8,7 @@ import MensagemAssistente from '../models/MensagemAssistente.js';
 import { assistente, criarAssistenteComChave } from '../services/assistente/index.js';
 import { FERRAMENTAS_DISPONIVEIS } from '../services/assistente/LLMService.js';
 import { processarMensagemIA, executarPreviasConfirmadas } from '../services/assistente/whatsappProcessor.js';
-import ConfirmacaoIA from '../models/ConfirmacaoIA.js';
-import InteracaoIA from '../models/InteracaoIA.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -164,7 +163,22 @@ router.post('/whatsapp/processar', async (req, res, next) => {
       anexo
     });
 
-    return res.json(resultado);
+    const mensagemSalva = await MensagemAssistente.create({
+      empresa: req.user.empresa,
+      usuario: req.user.id,
+      pergunta: mensagem,
+      resposta: resultado.resposta,
+      fontes: resultado.fontes || [],
+      ferramentasUsadas: resultado.ferramentasUsadas || [],
+      ...(resultado.requerConfirmacao && resultado.previas?.length
+        ? { confirmacao: { previas: resultado.previas } } : {})
+    });
+
+    return res.json({
+      ...resultado,
+      interacaoId: mensagemSalva._id,
+      confirmacaoId: mensagemSalva.confirmacao?._id
+    });
   } catch (err) {
     return next(err);
   }
@@ -172,35 +186,50 @@ router.post('/whatsapp/processar', async (req, res, next) => {
 
 // Executar prévias confirmadas
 router.post('/whatsapp/executar-previas', async (req, res, next) => {
+  let filtro;
+  let reservada = false;
   try {
     const { interacaoIAId, confirmacaoId } = req.body || {};
     if (!interacaoIAId || !confirmacaoId) {
       return res.status(400).json({ error: 'interacaoIAId e confirmacaoId sao obrigatorios' });
     }
-
-    const confirmacao = await ConfirmacaoIA.findById(confirmacaoId);
-    if (!confirmacao) return res.status(404).json({ error: 'Confirmacao nao encontrada' });
-    if (!confirmacao.confirmado) return res.status(400).json({ error: 'Confirmacao nao foi aprovada' });
-
-    const interacao = await InteracaoIA.findById(interacaoIAId);
-    if (!interacao) return res.status(404).json({ error: 'Interacao nao encontrada' });
+    if (!mongoose.isValidObjectId(interacaoIAId) || !mongoose.isValidObjectId(confirmacaoId)) {
+      return res.status(400).json({ error: 'Identificadores de confirmacao invalidos' });
+    }
+    filtro = {
+      _id: interacaoIAId,
+      empresa: req.user.empresa,
+      usuario: req.user.id,
+      'confirmacao._id': confirmacaoId
+    };
+    // A reserva atômica impede executar a mesma prévia em dois cliques/requisições.
+    const mensagem = await MensagemAssistente.findOneAndUpdate(
+      { ...filtro, 'confirmacao.status': 'pendente' },
+      { $set: { 'confirmacao.status': 'processando', 'confirmacao.dataConfirmacao': new Date() } },
+      { new: true }
+    );
+    if (!mensagem) return res.status(409).json({ error: 'Previa indisponivel ou ja confirmada' });
+    reservada = true;
 
     const resultados = await executarPreviasConfirmadas(
       req.user.empresa,
-      confirmacao.previasApresentadas,
+      mensagem.confirmacao.previas,
       req.user.id
     );
 
-    // Atualiza interacao
-    interacao.status = 'concluido';
-    await interacao.save();
-
-    // Atualiza confirmacao com resultados
-    confirmacao.acoesExecutadas = resultados;
-    await confirmacao.save();
-
-    return res.json({ resultados, interacao, confirmacao });
+    await MensagemAssistente.updateOne(filtro, {
+      $set: { 'confirmacao.status': 'concluida', 'confirmacao.resultados': resultados }
+    });
+    return res.json({ resultados });
   } catch (err) {
+    if (reservada) {
+      // Não libera para nova execução: uma falha pode ocorrer após uma gravação parcial.
+      try {
+        await MensagemAssistente.updateOne(filtro, {
+          $set: { 'confirmacao.status': 'erro', 'confirmacao.erro': err.message }
+        });
+      } catch { /* Mantém a reserva se não for possível registrar o erro. */ }
+    }
     return next(err);
   }
 });

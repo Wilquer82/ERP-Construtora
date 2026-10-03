@@ -93,6 +93,8 @@ app.use(helmet({
 	referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 app.use(cors({ origin: origins }));
+// Um anexo de 10 MB ocupa aproximadamente 13,4 MB ao ser enviado em base64.
+app.use(['/api/assistente/analisar-imagem', '/api/assistente/whatsapp/processar'], express.json({ limit: '14mb' }));
 app.use(express.json({ limit: '100kb' }));
 
 const authLimiter = rateLimit({

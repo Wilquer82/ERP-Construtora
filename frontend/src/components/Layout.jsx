@@ -1,9 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const menu = [
+const itens = [
   { to: '/', icone: 'dashboard', texto: 'Dashboard', fim: true },
-  { to: '/dashboard/assistente', icone: 'assistente', texto: 'Assistente' },
+  { to: '/assistente', icone: 'assistente', texto: 'Assistente' },
   { to: '/dashboard/obras-pendentes', icone: 'obra', texto: 'Obras em Andamento' },
   { to: '/obras', icone: 'obra', texto: 'Obras' },
   { to: '/clientes', icone: 'clientes', texto: 'Clientes' },
@@ -20,9 +20,16 @@ const menu = [
   { to: '/cheques', icone: 'financeiro', texto: 'Cheques' },
   { to: '/acordos', icone: 'financeiro', texto: 'Acordos' },
   { to: '/recebiveis-obra', icone: 'financeiro', texto: 'Recebíveis Obra' },
-  { to: '/whatsapp', icone: 'assistente', texto: 'WhatsApp / IA' },
-  { to: '/whatsapp-config', icone: 'assistente', texto: 'Config. WhatsApp', admin: true },
   { to: '/usuarios', icone: 'clientes', texto: 'Usuários e permissões', admin: true },
+];
+
+const grupos = [
+  { titulo: 'Visão geral', rotas: ['/', '/assistente'] },
+  { titulo: 'Obras e contratos', rotas: ['/obras', '/dashboard/obras-pendentes', '/clientes', '/orcamentos', '/contratos'] },
+  { titulo: 'Financeiro', rotas: ['/financeiro', '/recebiveis-obra', '/reembolsos', '/cheques', '/acordos'] },
+  { titulo: 'Suprimentos', rotas: ['/materiais', '/compras', '/fornecedores'] },
+  { titulo: 'Pessoas e equipes', rotas: ['/rh', '/empreiteiros', '/contratos-empreiteiro'] },
+  { titulo: 'Administração', rotas: ['/usuarios'] }
 ];
 
 function Icone({ nome }) {
@@ -50,7 +57,10 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const iniciais = (user?.nome || 'CE').split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
-  const menuVisivel = menu.filter((m) => !m.admin || user?.role === 'admin');
+  const menuVisivel = grupos.map((grupo) => ({
+    ...grupo,
+    itens: grupo.rotas.map((rota) => itens.find((item) => item.to === rota)).filter((item) => item && (!item.admin || user?.role === 'admin'))
+  })).filter((grupo) => grupo.itens.length > 0);
 
   const sair = () => { logout(); navigate('/login'); };
 
@@ -65,11 +75,16 @@ export default function Layout() {
           </div>
         </div>
         <nav aria-label="Navegação principal">
-          {menuVisivel.map((m) => (
-            <NavLink key={m.to} to={m.to} end={m.fim} title={m.texto} className={({ isActive }) => `item-menu${isActive ? ' ativo' : ''}`}>
-              <span className="menu-icono"><Icone nome={m.icone} /></span>
-              <span className="txt">{m.texto}</span>
-            </NavLink>
+          {menuVisivel.map((grupo) => (
+            <div className="menu-grupo" key={grupo.titulo} role="group" aria-label={grupo.titulo}>
+              <span className="menu-grupo-titulo">{grupo.titulo}</span>
+              {grupo.itens.map((m) => (
+                <NavLink key={m.to} to={m.to} end={m.fim} title={m.texto} className={({ isActive }) => `item-menu${isActive ? ' ativo' : ''}`}>
+                  <span className="menu-icono"><Icone nome={m.icone} /></span>
+                  <span className="txt">{m.texto}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="user-box">

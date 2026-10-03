@@ -4,6 +4,7 @@
   "private": true,
   "description": "Sistema essencial de gestao de obras (estilo Sienge) em MERN",
   "scripts": {
+    "test": "npm --prefix frontend test",
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",

@@ -81,7 +81,7 @@ export default function UsuarioWhatsApp() {
   return (
     <div>
       <div className="topbar">
-        <h1>Usuários WhatsApp Autorizados</h1>
+        <h2>WhatsApp e permissões</h2>
         <div style={{display: 'flex', gap: 8}}>
           <button className="btn btn-primario" onClick={abrirNovo}>+ Novo usuário</button>
           <button className="btn btn-linha" onClick={abrirTeste}>Testar envio</button>

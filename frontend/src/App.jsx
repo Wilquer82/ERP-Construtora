@@ -4,7 +4,7 @@ import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DashboardAtencao from './pages/Dashboard/Atencao.jsx';
-import Assistente from './pages/Dashboard/Assistente.jsx';
+import Assistente from './pages/Assistente.jsx';
 import ObrasPendentes from './pages/Dashboard/ObrasPendentes.jsx';
 import RH from './pages/RH/RH.jsx';
 import Clientes from './pages/Clientes.jsx';
@@ -25,8 +25,6 @@ import Reembolsos from './pages/Reembolsos.jsx';
 import Cheques from './pages/Cheques.jsx';
 import Acordos from './pages/Acordos.jsx';
 import RecebiveisObra from './pages/RecebiveisObra.jsx';
-import UsuarioWhatsApp from './pages/UsuarioWhatsApp.jsx';
-import WhatsApp from './pages/WhatsApp.jsx';
 
 function RotaProtegida({ children }) {
   const { user, carregandoSessao } = useAuth();
@@ -65,7 +63,8 @@ export default function App() {
           <Route path="compras" element={<Compras />} />
           <Route path="rh/*" element={<RH />} />
           <Route path="dashboard/resumo" element={<Dashboard />} />
-          <Route path="dashboard/assistente" element={<Assistente />} />
+          <Route path="assistente/*" element={<Assistente />} />
+          <Route path="dashboard/assistente" element={<Navigate to="/assistente" replace />} />
           <Route path="dashboard/obras-pendentes" element={<ObrasPendentes />} />
           <Route path="empreiteiros" element={<Empreiteiros />} />
           <Route path="contratos-empreiteiro" element={<ContratosEmpreiteiro />} />
@@ -73,8 +72,8 @@ export default function App() {
           <Route path="cheques" element={<Cheques />} />
           <Route path="acordos" element={<Acordos />} />
           <Route path="recebiveis-obra" element={<RecebiveisObra />} />
-          <Route path="whatsapp" element={<WhatsApp />} />
-          <Route path="whatsapp-config" element={<RotaAdmin><UsuarioWhatsApp /></RotaAdmin>} />
+          <Route path="whatsapp" element={<Navigate to="/assistente/financeiro" replace />} />
+          <Route path="whatsapp-config" element={<RotaAdmin><Navigate to="/assistente/whatsapp" replace /></RotaAdmin>} />
           <Route path="usuarios" element={<RotaAdmin><Usuarios /></RotaAdmin>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

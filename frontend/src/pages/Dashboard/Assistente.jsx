@@ -595,7 +595,7 @@ ${(data.obras || []).map((o, i) => `${i + 1}. ${o.nome}${o.codigo ? ` (${o.codig
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Assistente do Proprietário</h1>
+          <h2 style={{ margin: 0 }}>Consultas e alertas</h2>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
             Monitoramento autônomo de prazos, contas e obras
           </p>
